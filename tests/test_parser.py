@@ -1,0 +1,51 @@
+from __future__ import annotations
+
+import pytest
+
+from toontools import from_toon
+from toontools.errors import ToonSyntaxError
+
+
+def test_parse_object_and_array():
+    text = """
+title: "Glyphs"
+items:
+  - name: light
+    power: 5
+  - name: fire
+    power: 9
+"""
+    data = from_toon(text)
+    assert data["title"] == "Glyphs"
+    assert len(data["items"]) == 2
+
+
+def test_parse_table_block():
+    text = """
+crew:
+  @table id, name
+    | 1 | Luz |
+    | 2 | Amity |
+"""
+    data = from_toon(text)
+    assert data["crew"][0]["name"] == "Luz"
+
+
+def test_multiline_string():
+    text = """
+entry:
+  description: \"\"\"
+line one
+line two
+\"\"\"
+"""
+    data = from_toon(text)
+    assert data["entry"]["description"] == "line one\nline two"
+
+
+def test_error_reports_line():
+    text = "key value"
+    with pytest.raises(ToonSyntaxError) as exc:
+        from_toon(text)
+    assert "line" in str(exc.value)
+

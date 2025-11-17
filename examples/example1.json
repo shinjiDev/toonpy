@@ -1,0 +1,12 @@
+{
+  "crew": [
+    {"id": 1, "name": "Luz", "role": "Light glyph"},
+    {"id": 2, "name": "Amity", "role": "Abomination strategist"}
+  ],
+  "active": true,
+  "ship": {
+    "name": "Owl House",
+    "location": "Bonesborough"
+  }
+}
+
