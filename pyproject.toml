@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "toonpy"
+version = "0.1.0"
+description = "Conversion utilities between JSON and TOON (Token-Oriented Object Notation)"
+readme = "README.md"
+authors = [
+    { name = "ToonPy Contributors" }
+]
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+dependencies = []
+keywords = ["toon", "json", "serialization", "parser"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Utilities"
+]
+
+[project.urls]
+Homepage = "https://example.com/toonpy"
+Repository = "https://example.com/toonpy/repo"
+Documentation = "https://example.com/toonpy/docs"
+
+[project.optional-dependencies]
+tests = [
+    "pytest>=7",
+    "hypothesis>=6",
+    "coverage>=7"
+]
+examples = [
+    "tiktoken>=0.5.2"
+]
+
+[project.scripts]
+toonpy = "toonpy.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["toonpy*", "toontools*"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["toonpy"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
