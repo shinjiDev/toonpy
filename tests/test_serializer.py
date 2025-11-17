@@ -15,6 +15,7 @@ def test_tabular_mode_auto():
         {"id": 2, "name": "Amity"},
     ]
     toon = to_toon({"crew": crew}, mode="auto")
-    assert "@table" in toon
+    # Check for spec-compliant syntax: key[N]{fields}:
+    assert "crew[2]{id,name}:" in toon
     assert from_toon(toon)["crew"] == crew
 

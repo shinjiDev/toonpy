@@ -1,0 +1,6 @@
+users[3]{id,name,email,active}:
+  1,Alice,"alice@example.com",true
+  2,Bob,"bob@example.com",true
+  3,Charlie,"charlie@example.com",false
+total: 3
+

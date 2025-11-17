@@ -22,13 +22,34 @@ items:
 
 def test_parse_table_block():
     text = """
-crew:
-  @table id, name
-    | 1 | Luz |
-    | 2 | Amity |
+crew[2]{id,name}:
+  1,Luz
+  2,Amity
 """
     data = from_toon(text)
     assert data["crew"][0]["name"] == "Luz"
+
+
+def test_parse_table_length_validation():
+    # Test that length mismatch raises error
+    text = """
+crew[2]{id,name}:
+  1,Luz
+"""
+    with pytest.raises(ToonSyntaxError) as exc:
+        from_toon(text)
+    assert "declares 2 rows" in str(exc.value) and "found 1" in str(exc.value)
+    
+    # Test that extra rows also raise error
+    text2 = """
+crew[2]{id,name}:
+  1,Luz
+  2,Amity
+  3,Extra
+"""
+    with pytest.raises(ToonSyntaxError) as exc:
+        from_toon(text2)
+    assert "declares 2 rows" in str(exc.value) and "found 3" in str(exc.value)
 
 
 def test_multiline_string():

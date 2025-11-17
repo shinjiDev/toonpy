@@ -1,0 +1,15 @@
+{
+  "data": {
+    "numbers": [1, 2, 3, 4, 5],
+    "mixed": [null, true, false, 42, "text"],
+    "nested": [
+      {
+        "level": 1,
+        "children": [
+          {"level": 2, "value": "deep"}
+        ]
+      }
+    ]
+  }
+}
+

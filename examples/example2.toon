@@ -1,0 +1,8 @@
+spell:
+  name: light
+  glyphs[2]{shape,layer}:
+    circle,base
+    triangle,focus
+meta:
+  created: "2024-08-01T10:00:00Z"
+  valid: true

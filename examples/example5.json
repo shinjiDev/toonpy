@@ -1,0 +1,10 @@
+{
+  "config": {
+    "debug": false,
+    "timeout": 30.5,
+    "retries": 3
+  },
+  "features": [],
+  "metadata": {}
+}
+

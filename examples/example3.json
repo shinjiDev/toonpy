@@ -1,0 +1,10 @@
+{
+  "title": "Glyphs",
+  "items": [
+    {"name": "light", "power": 5},
+    {"name": "fire", "power": 9}
+  ],
+  "tags": ["magic", "combat", "utility"],
+  "count": 2
+}
+

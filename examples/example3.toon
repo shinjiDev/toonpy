@@ -1,0 +1,10 @@
+title: Glyphs
+items[2]{name,power}:
+  light,5
+  fire,9
+tags:
+  - magic
+  - combat
+  - utility
+count: 2
+

@@ -1,0 +1,14 @@
+{
+  "spell": {
+    "name": "light",
+    "glyphs": [
+      {"shape": "circle", "layer": "base"},
+      {"shape": "triangle", "layer": "focus"}
+    ]
+  },
+  "meta": {
+    "created": "2024-08-01T10:00:00Z",
+    "valid": true
+  }
+}
+

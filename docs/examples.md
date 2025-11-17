@@ -21,10 +21,9 @@ Input (`examples/example1.json`):
 Serialized TOON:
 
 ```
-crew:
-  @table id, name, role
-    | 1 | Luz | "Light glyph" |
-    | 2 | Amity | "Abomination strategist" |
+crew[2]{id,name,role}:
+  1,Luz,"Light glyph"
+  2,Amity,"Abomination strategist"
 active: true
 ship:
   name: "Owl House"

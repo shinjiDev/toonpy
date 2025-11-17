@@ -1,0 +1,12 @@
+product:
+  name: "Magic Wand"
+  price: 99.99
+  in_stock: true
+  specs:
+    length: "12 inches"
+    material: Oak
+    core: "Phoenix feather"
+  reviews[2]{rating,comment}:
+    5,"Excellent!"
+    4,"Very good quality"
+

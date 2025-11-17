@@ -9,22 +9,51 @@ from typing import Any, Literal, Mapping, Sequence
 
 from .utils import TabularSchema, format_key, string_needs_quotes, tabular_schema
 
-Mode = Literal["auto", "compact", "readable"]
+mode_type = Literal["auto", "compact", "readable"]
 
 __all__ = ["to_toon"]
 
 
 class ToonSerializer:
-    def __init__(self, *, indent: int = 2, mode: Mode = "auto") -> None:
+    """Serializer that converts Python objects to TOON format text.
+    
+    Handles objects, arrays, scalars, and automatically detects tabular arrays
+    for efficient serialization according to TOON SPEC v2.0.
+    """
+    
+    def __init__(self, *, indent: int = 2, mode: mode_type = "auto") -> None:
+        """Initialize the serializer.
+        
+        Args:
+            indent: Number of spaces per indentation level (default: 2)
+            mode: Serialization mode - "auto" (smart tabular detection),
+                  "compact" (always use tables when possible), or "readable"
+                  (only use tables when savings > 10 tokens)
+        """
         self.indent = indent
         self.mode = mode
 
     def dumps(self, obj: Any) -> str:
+        """Serialize a Python object to TOON format string.
+        
+        Args:
+            obj: Python object (dict, list, scalar) compatible with JSON model
+            
+        Returns:
+            TOON-formatted string with trailing newline
+        """
         lines: list[str] = []
         self._write_value(obj, 0, lines)
         return "\n".join(lines).rstrip() + "\n"
 
     def _write_value(self, obj: Any, level: int, lines: list[str]) -> None:
+        """Write a value to the output lines, dispatching by type.
+        
+        Args:
+            obj: Value to serialize (object, array, or scalar)
+            level: Current indentation level (number of spaces)
+            lines: List of output lines to append to
+        """
         if isinstance(obj, Mapping):
             if not obj:
                 lines.append(" " * level + "{}")
@@ -39,8 +68,24 @@ class ToonSerializer:
             lines.append(" " * level + self._format_scalar(obj))
 
     def _write_object(self, mapping: Mapping[str, Any], level: int, lines: list[str]) -> None:
+        """Write an object (dict) to output lines.
+        
+        Detects tabular arrays and uses spec-compliant key[N]{fields}: syntax.
+        Otherwise writes key-value pairs with appropriate indentation.
+        
+        Args:
+            mapping: Dictionary to serialize
+            level: Current indentation level
+            lines: List of output lines to append to
+        """
         for key, value in mapping.items():
             key_repr = format_key(str(key))
+            # Check if value is a tabular array
+            if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)) and value:
+                schema = self._maybe_tabular(value)
+                if schema and all(isinstance(item, Mapping) for item in value):
+                    self._write_table_as_key(key_repr, value, schema, level, lines)
+                    continue
             prefix = " " * level + f"{key_repr}:"
             inline_container = self._inline_container_repr(value)
             if inline_container is not None:
@@ -53,6 +98,15 @@ class ToonSerializer:
                 self._write_value(value, level + self.indent, lines)
 
     def _write_array(self, seq: Sequence[Any], level: int, lines: list[str]) -> None:
+        """Write an array (list) to output lines.
+        
+        Uses tabular format if detected, otherwise writes list items with "-" prefix.
+        
+        Args:
+            seq: Sequence to serialize
+            level: Current indentation level
+            lines: List of output lines to append to
+        """
         schema = self._maybe_tabular(seq)
         if schema:
             self._write_table(seq, schema, level, lines)
@@ -69,6 +123,40 @@ class ToonSerializer:
                 lines.append(prefix)
                 self._write_value(item, level + self.indent, lines)
 
+    def _write_table_as_key(
+        self,
+        key: str,
+        seq: Sequence[Mapping[str, Any]],
+        schema: TabularSchema,
+        level: int,
+        lines: list[str],
+    ) -> None:
+        """Write a table using TOON SPEC v2.0 syntax: key[N]{field1,field2}:.
+        
+        This is the spec-compliant format for tabular arrays within objects.
+        Rows are comma-separated and indented.
+        
+        Args:
+            key: Object key name (will be formatted/quoted if needed)
+            seq: Sequence of uniform objects (all have same keys)
+            schema: TabularSchema with field names and savings estimate
+            level: Current indentation level
+            lines: List of output lines to append to
+        """
+        # Format the key (may add quotes if needed)
+        key_formatted = format_key(key)
+        fields = ",".join(format_key(k) for k in schema.keys)
+        header = f"{key_formatted}[{len(seq)}]{{{fields}}}:"
+        lines.append(" " * level + header)
+        inner_indent = " " * (level + self.indent)
+        for row in seq:
+            cells = []
+            for key in schema.keys:
+                value = row.get(key)
+                cells.append(self._format_cell(value))
+            # Use comma as delimiter per spec
+            lines.append(f"{inner_indent}" + ",".join(cells))
+
     def _write_table(
         self,
         seq: Sequence[Mapping[str, Any]],
@@ -76,6 +164,17 @@ class ToonSerializer:
         level: int,
         lines: list[str],
     ) -> None:
+        """Write table using legacy @table syntax (for root-level arrays only).
+        
+        Note: This is kept for backward compatibility but should not be used
+        for object values. Object values should use _write_table_as_key instead.
+        
+        Args:
+            seq: Sequence of uniform objects
+            schema: TabularSchema with field names
+            level: Current indentation level
+            lines: List of output lines to append to
+        """
         header = ", ".join(format_key(key) for key in schema.keys)
         lines.append(" " * level + f"@table {header}")
         inner_indent = " " * (level + self.indent)
@@ -87,6 +186,17 @@ class ToonSerializer:
             lines.append(f"{inner_indent}| " + " | ".join(cells) + " |")
 
     def _maybe_tabular(self, seq: Sequence[Any]) -> TabularSchema | None:
+        """Determine if a sequence should be serialized as a table.
+        
+        Checks if all items are uniform objects (same keys) and evaluates
+        token savings based on the current mode.
+        
+        Args:
+            seq: Sequence to evaluate
+            
+        Returns:
+            TabularSchema if table format should be used, None otherwise
+        """
         if not seq:
             return None
         if not all(isinstance(item, Mapping) for item in seq):
@@ -105,11 +215,30 @@ class ToonSerializer:
         return schema if toon_estimate < baseline else None
 
     def _linearize(self, seq: Sequence[Any]) -> str:
+        """Convert sequence to compact JSON string for size comparison.
+        
+        Args:
+            seq: Sequence to linearize
+            
+        Returns:
+            Compact JSON string (no extra whitespace)
+        """
         from json import dumps
 
         return dumps(seq, separators=(",", ":"))
 
     def _is_inline(self, value: Any) -> bool:
+        """Check if a value can be written inline (on same line as key).
+        
+        Objects and arrays require block format. Multiline strings also
+        require block format.
+        
+        Args:
+            value: Value to check
+            
+        Returns:
+            True if value can be written inline, False if block format needed
+        """
         if isinstance(value, Mapping):
             return False
         if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
@@ -119,11 +248,39 @@ class ToonSerializer:
         return True
 
     def _format_cell(self, value: Any) -> str:
-        if isinstance(value, str) and not string_needs_quotes(value) and "|" not in value and "," not in value:
+        """Format a table cell value for comma-separated output.
+        
+        Values containing commas, pipes, or requiring quotes are properly
+        escaped. Safe strings can remain unquoted.
+        
+        Args:
+            value: Cell value to format
+            
+        Returns:
+            Formatted string ready for table row
+        """
+        if isinstance(value, str):
+            # If string contains comma, pipe, or needs quotes, use quoted format
+            if "," in value or "|" in value or string_needs_quotes(value):
+                return self._format_scalar(value)
+            # Safe unquoted string
             return value
+        # Non-string values use standard scalar formatting
         return self._format_scalar(value)
 
     def _format_scalar(self, value: Any, *, force_string: bool = False) -> str:
+        """Format a scalar value for TOON output.
+        
+        Handles null, booleans, numbers, and strings. Uses JSON-compatible
+        escaping for strings when needed.
+        
+        Args:
+            value: Scalar value to format
+            force_string: If True, convert non-strings to quoted strings
+            
+        Returns:
+            Formatted string representation
+        """
         if value is None and not force_string:
             return "null"
         if value is True and not force_string:
@@ -142,6 +299,16 @@ class ToonSerializer:
 
     @staticmethod
     def _inline_container_repr(value: Any) -> str | None:
+        """Get inline representation for empty containers.
+        
+        Empty objects and arrays can be written inline as {} or [].
+        
+        Args:
+            value: Value to check
+            
+        Returns:
+            "{}" for empty dict, "[]" for empty list, None otherwise
+        """
         if isinstance(value, Mapping) and not value:
             return "{}"
         if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)) and not value:
@@ -149,6 +316,24 @@ class ToonSerializer:
         return None
 
 
-def to_toon(obj: Any, *, indent: int = 2, mode: Mode = "auto") -> str:
+def to_toon(obj: Any, *, indent: int = 2, mode: mode_type = "auto") -> str:
+    """Convert a Python object to TOON format string.
+    
+    Convenience function that creates a ToonSerializer and serializes the object.
+    
+    Args:
+        obj: Python object compatible with JSON model (dict, list, scalar)
+        indent: Number of spaces per indentation level (default: 2)
+        mode: Serialization mode - "auto" (smart), "compact", or "readable"
+        
+    Returns:
+        TOON-formatted string
+        
+    Example:
+        >>> data = {"crew": [{"id": 1, "name": "Luz"}]}
+        >>> toon = to_toon(data, mode="auto")
+        >>> "crew[1]{id,name}:" in toon
+        True
+    """
     return ToonSerializer(indent=indent, mode=mode).dumps(obj)
 

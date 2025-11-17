@@ -1,0 +1,17 @@
+{
+  "product": {
+    "name": "Magic Wand",
+    "price": 99.99,
+    "in_stock": true,
+    "specs": {
+      "length": "12 inches",
+      "material": "Oak",
+      "core": "Phoenix feather"
+    },
+    "reviews": [
+      {"rating": 5, "comment": "Excellent!"},
+      {"rating": 4, "comment": "Very good quality"}
+    ]
+  }
+}
+
