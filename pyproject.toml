@@ -3,21 +3,21 @@ requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "toonpy"
+name = "toontools"
 version = "0.1.0"
 description = "Conversion utilities between JSON and TOON (Token-Oriented Object Notation)"
 readme = "README.md"
 authors = [
-    { name = "ToonPy Contributors" }
+    { name = "shinjidev", email = "palomares.c@gmail.com" }
 ]
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.9"
 dependencies = []
 keywords = ["toon", "json", "serialization", "parser"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
@@ -30,9 +30,10 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://example.com/toonpy"
-Repository = "https://example.com/toonpy/repo"
-Documentation = "https://example.com/toonpy/docs"
+Homepage = "https://github.com/shinjidev/toonpy"
+Repository = "https://github.com/shinjidev/toonpy"
+Documentation = "https://github.com/shinjidev/toonpy#readme"
+"Bug Tracker" = "https://github.com/shinjidev/toonpy/issues"
 
 [project.optional-dependencies]
 tests = [
@@ -48,7 +49,7 @@ examples = [
 toonpy = "toonpy.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["toonpy*", "toontools*"]
+include = ["toonpy*"]
 
 [tool.pytest.ini_options]
 addopts = "-ra"
