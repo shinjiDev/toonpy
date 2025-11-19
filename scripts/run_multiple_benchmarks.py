@@ -1,5 +1,5 @@
 """
-Script para ejecutar benchmarks múltiples veces y obtener estadísticas.
+Script to run benchmarks multiple times and gather statistics.
 """
 
 import subprocess
@@ -7,7 +7,7 @@ import sys
 import statistics
 
 def run_benchmark():
-    """Ejecuta un benchmark y extrae los valores Mean."""
+    """Run one benchmark execution and extract mean values."""
     result = subprocess.run(
         [sys.executable, "scripts/benchmark_comparison.py"],
         capture_output=True,
@@ -18,7 +18,7 @@ def run_benchmark():
     means = []
     for line in result.stdout.split('\n'):
         if 'Mean:' in line:
-            # Extraer el valor numérico
+            # Extract numeric value
             parts = line.split()
             for i, part in enumerate(parts):
                 if part == 'Mean:':
@@ -30,33 +30,33 @@ def run_benchmark():
     return means
 
 def main():
-    print("Ejecutando benchmarks múltiples veces para validar resultados...")
+    print("Running benchmarks multiple times to validate results...")
     print("=" * 70)
     
     all_results = {
-        "Serialización pequeña": [],
-        "Parsing pequeño": [],
-        "Serialización tabular": [],
-        "Parsing tabular": [],
-        "Estructuras anidadas": [],
+        "Small serialization": [],
+        "Small parsing": [],
+        "Tabular serialization": [],
+        "Tabular parsing": [],
+        "Nested structures": [],
         "Round-trip": []
     }
     
     num_runs = 5
     for i in range(num_runs):
-        print(f"\n[{i+1}/{num_runs}] Ejecutando benchmark...")
+        print(f"\n[{i+1}/{num_runs}] Running benchmark...")
         means = run_benchmark()
         
         if len(means) >= 6:
-            all_results["Serialización pequeña"].append(means[0])
-            all_results["Parsing pequeño"].append(means[1])
-            all_results["Serialización tabular"].append(means[2])
-            all_results["Parsing tabular"].append(means[3])
-            all_results["Estructuras anidadas"].append(means[4])
+            all_results["Small serialization"].append(means[0])
+            all_results["Small parsing"].append(means[1])
+            all_results["Tabular serialization"].append(means[2])
+            all_results["Tabular parsing"].append(means[3])
+            all_results["Nested structures"].append(means[4])
             all_results["Round-trip"].append(means[5])
     
     print("\n" + "=" * 70)
-    print("RESUMEN DE RESULTADOS (5 ejecuciones)")
+    print("RESULT SUMMARY (5 runs)")
     print("=" * 70)
     
     for name, values in all_results.items():
@@ -73,18 +73,19 @@ def main():
             print(f"  Min:    {min_val:.3f} ms")
             print(f"  Max:    {max_val:.3f} ms")
             print(f"  StdDev: {stdev:.3f} ms")
-            print(f"  Range:  {max_val - min_val:.3f} ms ({((max_val - min_val) / mean * 100):.1f}% variabilidad)")
+            variability = ((max_val - min_val) / mean * 100) if mean else 0
+            print(f"  Range:  {max_val - min_val:.3f} ms ({variability:.1f}% variability)")
     
     print("\n" + "=" * 70)
-    print("Comparación con números originales (después de primeras optimizaciones):")
+    print("Comparison with original numbers (after initial optimizations):")
     print("=" * 70)
     
     original = {
-        "Serialización pequeña": 0.015,
-        "Parsing pequeño": 0.028,
-        "Serialización tabular": 0.620,
-        "Parsing tabular": 1.826,
-        "Estructuras anidadas": 0.477,
+        "Small serialization": 0.015,
+        "Small parsing": 0.028,
+        "Tabular serialization": 0.620,
+        "Tabular parsing": 1.826,
+        "Nested structures": 0.477,
         "Round-trip": 12.505
     }
     

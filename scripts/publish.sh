@@ -1,27 +1,27 @@
 #!/bin/bash
-# Script para publicar toonpy en PyPI
+# Script to publish toonpy on PyPI
 
-set -e  # Salir si hay errores
+set -e  # Exit on error
 
-echo "🧹 Limpiando builds anteriores..."
+echo "🧹 Cleaning previous builds..."
 rm -rf dist/ build/ *.egg-info/ toonpy.egg-info/
 
-echo "✅ Ejecutando tests..."
+echo "✅ Running tests..."
 pytest tests/ -v
 
-echo "📦 Construyendo paquete..."
+echo "📦 Building package..."
 python -m build
 
-echo "🔍 Verificando paquete..."
+echo "🔍 Checking package..."
 twine check dist/*
 
 echo ""
-echo "✅ Paquete listo para publicar!"
+echo "✅ Package ready to publish!"
 echo ""
-echo "Para publicar en TestPyPI:"
+echo "To publish on TestPyPI:"
 echo "  twine upload --repository testpypi dist/*"
 echo ""
-echo "Para publicar en PyPI:"
+echo "To publish on PyPI:"
 echo "  twine upload dist/*"
 echo ""
 

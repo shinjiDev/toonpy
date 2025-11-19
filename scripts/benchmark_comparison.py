@@ -1,6 +1,6 @@
 """
-Script para comparar performance antes y después de optimizaciones.
-Ejecuta los benchmarks múltiples veces y muestra estadísticas.
+Script to compare performance before/after optimizations.
+Runs the benchmarks multiple times and prints statistics.
 """
 
 import sys
@@ -195,41 +195,41 @@ def main():
     if sys.platform == 'win32':
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     
-    print("Ejecutando benchmarks de performance (version optimizada)")
+    print("Running performance benchmarks (optimized version)")
     print("=" * 60)
     
-    print("\nEjecutando benchmarks... Esto puede tomar unos momentos...")
+    print("\nRunning benchmarks... this may take a moment...")
     
     # Small data
-    print("\n1. Serializacion de datos pequenos...")
+    print("\n1. Small data serialization...")
     small_serialize = benchmark_serialize_small(runs=200)
-    print_results("Serialización Pequeña (200 runs)", small_serialize)
+    print_results("Small Serialization (200 runs)", small_serialize)
     
-    print("\n2. Parsing de datos pequenos...")
+    print("\n2. Small data parsing...")
     small_parse = benchmark_parse_small(runs=200)
-    print_results("Parsing Pequeno (200 runs)", small_parse)
+    print_results("Small Parsing (200 runs)", small_parse)
     
     # Tabular data
-    print("\n3. Serializacion de datos tabulares (100 rows)...")
+    print("\n3. Tabular data serialization (100 rows)...")
     tabular_serialize = benchmark_serialize_tabular(runs=100)
-    print_results("Serializacion Tabular (100 runs)", tabular_serialize)
+    print_results("Tabular Serialization (100 runs)", tabular_serialize)
     
-    print("\n4. Parsing de datos tabulares (100 rows)...")
+    print("\n4. Tabular data parsing (100 rows)...")
     tabular_parse = benchmark_parse_tabular(runs=100)
-    print_results("Parsing Tabular (100 runs)", tabular_parse)
+    print_results("Tabular Parsing (100 runs)", tabular_parse)
     
     # Nested structure
-    print("\n5. Serializacion de estructuras anidadas (depth 10)...")
+    print("\n5. Nested structure serialization (depth 10)...")
     nested = benchmark_nested_structure(runs=100)
-    print_results("Estructuras Anidadas (100 runs)", nested)
+    print_results("Nested Structures (100 runs)", nested)
     
     # Round trip
-    print("\n6. Round-trip completo (500 rows)...")
+    print("\n6. Full round-trip (500 rows)...")
     round_trip = benchmark_round_trip(runs=50)
     print_results("Round-Trip (50 runs)", round_trip)
     
     # Comparison with JSON
-    print("\n7. Comparacion con JSON (100 rows)...")
+    print("\n7. Comparison with JSON (100 rows)...")
     data = generate_large_data(100)
     
     json_times = []
@@ -251,14 +251,14 @@ def main():
     ratio = toon_mean / json_mean if json_mean > 0 else 0
     
     print(f"\n{'='*60}")
-    print("[BENCHMARK] Comparacion JSON vs TOON")
+    print("[BENCHMARK] JSON vs TOON Comparison")
     print(f"{'='*60}")
     print(f"  JSON:  {json_mean:.3f} ms (mean)")
     print(f"  TOON:  {toon_mean:.3f} ms (mean)")
     print(f"  Ratio: {ratio:.2f}x")
     
     print("\n" + "="*60)
-    print("[OK] Benchmarks completados!")
+    print("[OK] Benchmarks completed!")
     print("="*60)
 
 

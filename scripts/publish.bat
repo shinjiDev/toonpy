@@ -1,7 +1,7 @@
 @echo off
-REM Script para publicar toonpy en PyPI (Windows)
+REM Script to publish toonpy on PyPI (Windows)
 
-echo Limpiando builds anteriores...
+echo Cleaning previous builds...
 if exist dist rmdir /s /q dist
 if exist build rmdir /s /q build
 if exist toonpy.egg-info rmdir /s /q toonpy.egg-info
@@ -9,34 +9,34 @@ if exist *.egg-info (
     for /d %%d in (*.egg-info) do rmdir /s /q "%%d"
 )
 
-echo Ejecutando tests...
+echo Running tests...
 pytest tests/ -v
 if errorlevel 1 (
-    echo ERROR: Los tests fallaron. No se puede publicar.
+    echo ERROR: Tests failed. Cannot publish.
     exit /b 1
 )
 
-echo Construyendo paquete...
+echo Building package...
 python -m build
 if errorlevel 1 (
-    echo ERROR: Fallo al construir el paquete.
+    echo ERROR: Failed to build the package.
     exit /b 1
 )
 
-echo Verificando paquete...
+echo Checking package...
 twine check dist/*
 if errorlevel 1 (
-    echo ERROR: El paquete tiene errores.
+    echo ERROR: The package has issues.
     exit /b 1
 )
 
 echo.
-echo Paquete listo para publicar!
+echo Package ready to publish!
 echo.
-echo Para publicar en TestPyPI:
+echo To publish on TestPyPI:
 echo   twine upload --repository testpypi dist/*
 echo.
-echo Para publicar en PyPI:
+echo To publish on PyPI:
 echo   twine upload dist/*
 echo.
 
