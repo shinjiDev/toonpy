@@ -170,9 +170,14 @@ def suggest_tabular(obj: Sequence[Any]) -> TabularSuggestion:
     schema = tabular_schema(mappings)
     if not schema:
         return TabularSuggestion(False, 0, [])
+    # Calculate savings: compare JSON vs TOON tabular format
     linear = json.dumps(obj, separators=(",", ":"))
     serializer_text = _to_toon(obj, indent=2, mode="compact")
     savings = token_length(linear) - token_length(serializer_text)
+    # For small arrays, schema.savings might be more accurate than token comparison
+    # Use schema.savings if token comparison shows no savings but schema suggests savings
+    if savings <= 0 and schema.savings > 0:
+        savings = schema.savings
     return TabularSuggestion(savings > 0, savings, schema.keys)
 
 

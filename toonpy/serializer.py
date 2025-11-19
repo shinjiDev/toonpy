@@ -32,6 +32,9 @@ class ToonSerializer:
         """
         self.indent = indent
         self.mode = mode
+        # Cache de indentaciones comunes (0-20 niveles)
+        self._indent_cache: dict[int, str] = {}
+        self._max_cached_indent = 20
 
     def dumps(self, obj: Any) -> str:
         """Serialize a Python object to TOON format string.
@@ -44,7 +47,25 @@ class ToonSerializer:
         """
         lines: list[str] = []
         self._write_value(obj, 0, lines)
-        return "\n".join(lines).rstrip() + "\n"
+        # Optimización: usar join una sola vez en lugar de múltiples concatenaciones
+        if not lines:
+            return "\n"
+        return "\n".join(lines) + "\n"
+    
+    def _get_indent(self, level: int) -> str:
+        """Get indentation string for given level, using cache.
+        
+        Args:
+            level: Indentation level
+            
+        Returns:
+            String of spaces for indentation
+        """
+        if level <= self._max_cached_indent:
+            if level not in self._indent_cache:
+                self._indent_cache[level] = " " * (level * self.indent)
+            return self._indent_cache[level]
+        return " " * (level * self.indent)
 
     def _write_value(self, obj: Any, level: int, lines: list[str]) -> None:
         """Write a value to the output lines, dispatching by type.
@@ -54,18 +75,19 @@ class ToonSerializer:
             level: Current indentation level (number of spaces)
             lines: List of output lines to append to
         """
+        indent_str = self._get_indent(level)
         if isinstance(obj, Mapping):
             if not obj:
-                lines.append(" " * level + "{}")
+                lines.append(indent_str + "{}")
                 return
             self._write_object(obj, level, lines)
         elif isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray)):
             if not obj:
-                lines.append(" " * level + "[]")
+                lines.append(indent_str + "[]")
                 return
             self._write_array(obj, level, lines)
         else:
-            lines.append(" " * level + self._format_scalar(obj))
+            lines.append(indent_str + self._format_scalar(obj))
 
     def _write_object(self, mapping: Mapping[str, Any], level: int, lines: list[str]) -> None:
         """Write an object (dict) to output lines.
@@ -78,15 +100,16 @@ class ToonSerializer:
             level: Current indentation level
             lines: List of output lines to append to
         """
+        indent_str = self._get_indent(level)
         for key, value in mapping.items():
-            key_repr = format_key(str(key))
+            key_repr = format_key(str(key))  # Uses cache internally
             # Check if value is a tabular array
             if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)) and value:
                 schema = self._maybe_tabular(value)
                 if schema and all(isinstance(item, Mapping) for item in value):
                     self._write_table_as_key(key_repr, value, schema, level, lines)
                     continue
-            prefix = " " * level + f"{key_repr}:"
+            prefix = indent_str + f"{key_repr}:"
             inline_container = self._inline_container_repr(value)
             if inline_container is not None:
                 lines.append(f"{prefix} {inline_container}")
@@ -111,8 +134,10 @@ class ToonSerializer:
         if schema:
             self._write_table(seq, schema, level, lines)
             return
+        
+        indent_str = self._get_indent(level)
+        prefix = indent_str + "-"
         for item in seq:
-            prefix = " " * level + "-"
             inline_container = self._inline_container_repr(item)
             if inline_container is not None:
                 lines.append(f"{prefix} {inline_container}")
@@ -147,15 +172,17 @@ class ToonSerializer:
         key_formatted = format_key(key)
         fields = ",".join(format_key(k) for k in schema.keys)
         header = f"{key_formatted}[{len(seq)}]{{{fields}}}:"
-        lines.append(" " * level + header)
-        inner_indent = " " * (level + self.indent)
+        indent_str = self._get_indent(level)
+        lines.append(indent_str + header)
+        inner_indent = self._get_indent(level + 1)
         for row in seq:
             cells = []
             for key in schema.keys:
                 value = row.get(key)
                 cells.append(self._format_cell(value))
-            # Use comma as delimiter per spec
-            lines.append(f"{inner_indent}" + ",".join(cells))
+            # Use comma as delimiter per spec - optimizado: join una vez
+            row_str = ",".join(cells)
+            lines.append(inner_indent + row_str)
 
     def _write_table(
         self,
@@ -176,14 +203,17 @@ class ToonSerializer:
             lines: List of output lines to append to
         """
         header = ", ".join(format_key(key) for key in schema.keys)
-        lines.append(" " * level + f"@table {header}")
-        inner_indent = " " * (level + self.indent)
+        indent_str = self._get_indent(level)
+        lines.append(indent_str + f"@table {header}")
+        inner_indent = self._get_indent(level + 1)
         for row in seq:
             cells = []
             for key in schema.keys:
                 value = row.get(key)
                 cells.append(self._format_cell(value))
-            lines.append(f"{inner_indent}| " + " | ".join(cells) + " |")
+            # Optimizado: join una vez
+            row_str = " | ".join(cells)
+            lines.append(inner_indent + f"| {row_str} |")
 
     def _maybe_tabular(self, seq: Sequence[Any]) -> TabularSchema | None:
         """Determine if a sequence should be serialized as a table.

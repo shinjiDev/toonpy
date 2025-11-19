@@ -49,7 +49,11 @@ class ToonLexer:
         Args:
             source: Raw TOON source text
         """
-        self.source = source.replace("\r\n", "\n").replace("\r", "\n")
+        # Optimización: normalizar line endings una sola vez
+        if "\r" in source:
+            self.source = source.replace("\r\n", "\n").replace("\r", "\n")
+        else:
+            self.source = source
 
     def iter_lines(self) -> List[Line]:
         """Tokenize source into Line objects.
@@ -167,6 +171,10 @@ class ToonParser:
     Implements a recursive descent parser with indentation-based structure
     recognition. Supports objects, arrays, tables, scalars, and multiline strings.
     """
+    
+    # Compilar regex una sola vez (optimización)
+    _QUOTED_TABLE_PATTERN = re.compile(r'^"([^"]+)"\[(\d+)\]\{([^}]+)\}:$')
+    _UNQUOTED_TABLE_PATTERN = re.compile(r'^([A-Za-z_][A-Za-z0-9_.]*)\[(\d+)\]\{([^}]+)\}:$')
     
     def __init__(self, source: str, *, permissive: bool = False) -> None:
         """Initialize the parser.
@@ -362,8 +370,7 @@ class ToonParser:
         content = content.strip()
         # Pattern: key[N]{field1,field2}: where key can be quoted or unquoted
         # Try quoted key first: "key"[N]{fields}:
-        quoted_pattern = r'^"([^"]+)"\[(\d+)\]\{([^}]+)\}:$'
-        match = re.match(quoted_pattern, content)
+        match = self._QUOTED_TABLE_PATTERN.match(content)
         if match:
             key = match.group(1)
             length = int(match.group(2))
@@ -371,8 +378,7 @@ class ToonParser:
             fields = [f.strip() for f in fields_str.split(",") if f.strip()]
             return (key, length, fields)
         # Try unquoted key: key[N]{fields}:
-        unquoted_pattern = r'^([A-Za-z_][A-Za-z0-9_.]*)\[(\d+)\]\{([^}]+)\}:$'
-        match = re.match(unquoted_pattern, content)
+        match = self._UNQUOTED_TABLE_PATTERN.match(content)
         if match:
             key = match.group(1)
             length = int(match.group(2))

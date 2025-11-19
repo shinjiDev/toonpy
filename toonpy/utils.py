@@ -298,6 +298,9 @@ def tabular_schema(rows: Sequence[Mapping[str, object]]) -> TabularSchema | None
     the same keys in the same order, making them suitable for tabular
     format (key[N]{fields}:). Also estimates the character savings.
     
+    Uses early exit optimization: stops checking as soon as a mismatch
+    is found, avoiding processing the entire array when not uniform.
+    
     Args:
         rows: Sequence of dictionaries to analyze
         
