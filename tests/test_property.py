@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from hypothesis import HealthCheck, given, settings, strategies as st
 
-from toontools import from_toon, to_toon
+from toonpy import from_toon, to_toon
 
 
 json_scalars = st.one_of(

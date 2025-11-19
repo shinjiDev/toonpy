@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from toontools import from_toon, to_toon
+from toonpy import from_toon, to_toon
 
 
 def generate_large_data(size: int = 1000) -> dict[str, Any]:
@@ -203,7 +203,7 @@ active: true"""
 
     def test_validation_performance(self):
         """Benchmark validation speed."""
-        from toontools import validate_toon
+        from toonpy import validate_toon
         
         data = generate_large_data(200)
         toon = to_toon(data, mode="auto")

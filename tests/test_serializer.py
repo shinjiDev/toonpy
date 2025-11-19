@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from toontools import to_toon, from_toon
+from toonpy import to_toon, from_toon
 
 
 def test_round_trip_simple():

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from toontools import from_toon
-from toontools.errors import ToonSyntaxError
+from toonpy import from_toon
+from toonpy.errors import ToonSyntaxError
 
 
 def test_parse_object_and_array():

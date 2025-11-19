@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 import json
 
-from toontools import (
+from toonpy import (
     from_toon,
     stream_to_toon,
     suggest_tabular,
