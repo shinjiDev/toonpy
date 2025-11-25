@@ -111,6 +111,8 @@ pip install .[yaml]       # Include PyYAML for YAML support
 
 **Requirements:** Python 3.9+
 
+**Core Philosophy:** toontools follows a "zero-dependency core" design. The base installation requires no external packages, ensuring fast installs and minimal footprint. Additional format support (YAML, etc.) is available as optional dependencies.
+
 ### Optional: YAML Support
 
 To enable YAML ↔ TOON conversion:
@@ -120,6 +122,8 @@ pip install toontools[yaml]
 # or
 pip install PyYAML>=6.0
 ```
+
+**Why optional?** YAML support is opt-in to keep the core library lightweight (~60KB, 0 dependencies). Most users only need JSON ↔ TOON conversion. If you need YAML support, simply install the extra and all YAML functions become available automatically.
 
 ## 🚀 Quick Start
 
@@ -791,10 +795,14 @@ Comprehensive documentation is available in the repository:
 - **`docs/spec_summary.md`** – Concise TOON SPEC v2.0 overview with ABNF notes
 - **`docs/examples.md`** – JSON⇄TOON conversion examples
 - **`docs/assumptions.md`** – Documented gaps/assumptions + strict vs. permissive behavior
+- **`DESIGN_PHILOSOPHY.md`** – Architecture decisions and design principles (why zero-dependency core, optional features, etc.)
 
-### v0.3.0 Performance Documentation
+### v0.3.0 Documentation
 - **`RELEASE_NOTES.md`** – Complete v0.3.0 release notes with upgrade guide
 - **`CHANGELOG.md`** – Traditional changelog with version history
+- **`YAML_SUPPORT_SUMMARY.md`** – Complete YAML support implementation details
+
+### Performance Optimization Documentation
 - **`OPTIMIZATION_README.md`** – Quick start guide to optimization docs
 - **`OPTIMIZATIONS_DOCUMENTED.md`** – 23-page detailed technical analysis
 - **`ALL_OPTIMIZATIONS_SUMMARY.md`** – Comprehensive optimization overview
