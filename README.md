@@ -12,29 +12,32 @@
 
 A production-grade Python library and CLI that converts data between JSON, YAML, and TOON (Token-Oriented Object Notation) while fully conforming to **TOON SPEC v2.0**. Perfect for developers and data engineers who need efficient, token-optimized data serialization.
 
-**📦 Current Version: 0.3.0** - Major performance release with up to 70% speed improvements! See [What's New in v0.3.0](#-whats-new-in-v030) and [Performance](#-performance) sections for details.
+**📦 Current Version: 0.4.0** - YAML support added with optional dependency model! See [What's New in v0.4.0](#-whats-new-in-v040) and [Performance](#-performance) sections for details.
 
 **✅ Full TOON SPEC v2.0 Compliance** - This library implements all examples from the [official TOON specification repository](https://github.com/toon-format/spec/tree/main/examples), ensuring complete compatibility with the standard.
 
-## 🚀 What's New in v0.3.0
+## 🚀 What's New in v0.4.0
 
-**Major Performance Release** (November 2025) - This version brings substantial speed improvements across the entire library:
+**YAML Support Release** (November 2025) - This version adds comprehensive YAML support with a smart optional dependency model:
 
+- 🔄 **YAML ↔ TOON conversion** - Bidirectional conversion with streaming support
+- 📦 **Optional dependency model** - Zero-dependency core, install YAML support only if needed: `pip install toontools[yaml]`
+- 🎯 **CLI commands** - New `yaml-to-toon` and `toon-to-yaml` commands
+- ⚡ **High performance** - YAML conversion with minimal overhead (2-9%)
+- 📚 **Design philosophy docs** - New `DESIGN_PHILOSOPHY.md` explaining architectural decisions
+- ✅ **22 new tests** - Comprehensive YAML test coverage
+
+**Why Optional Dependencies?**
+- **Lightweight core**: Keep `toontools` dependency-free for JSON ↔ TOON workflows
+- **Install what you need**: Only add PyYAML if you need YAML support
+- **Best of both worlds**: Zero-dependency simplicity + extended format support
+
+**Previous Release - v0.3.0** (November 2025):
 - ⚡ **Parser: 20-50% faster** - Optimized literal parsing, comment removal, and table processing
 - 🚀 **Serializer: Up to 70% faster** - Streamlined type checking and container handling
 - 🔢 **Utils: 10-15% faster** - Improved number parsing and string operations
-- 💾 **Parallel: Better memory efficiency** - Optimized parallel processing with `executor.map()`
-- 🐛 **Bug fixes** - Corrected empty container serialization in tables
-- 📚 **Comprehensive documentation** - 15+ detailed optimization documents
 
-**Key Optimizations:**
-- Literal caching for common tokens (`true`, `false`, `null`, etc.)
-- `StringIO`-based comment removal (70% faster for comment-free files)
-- Try/except number parsing with regex fallback
-- String slicing for efficient row parsing
-- Reduced redundant type checks
-
-**Backward Compatibility:** ✅ **100% compatible** with v0.2.0 - drop-in replacement, no code changes required!
+**Backward Compatibility:** ✅ **100% compatible** with all previous versions - drop-in replacement, no code changes required!
 
 See [RELEASE_NOTES.md](RELEASE_NOTES.md) for complete details and [CHANGELOG.md](CHANGELOG.md) for the full changelog.
 
@@ -88,7 +91,7 @@ pip install toontools
 Or install a specific version:
 
 ```bash
-pip install toontools==0.3.0
+pip install toontools==0.4.0
 ```
 
 **📦 PyPI Package:** [toontools on PyPI](https://pypi.org/project/toontools/) | **Latest: v0.3.0**
