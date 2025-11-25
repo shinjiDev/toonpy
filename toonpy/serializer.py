@@ -32,7 +32,7 @@ class ToonSerializer:
         """
         self.indent = indent
         self.mode = mode
-        # Cache de indentaciones comunes (0-20 niveles)
+        # Cache for common indentation levels (0-20 levels)
         self._indent_cache: dict[int, str] = {}
         self._max_cached_indent = 20
 
@@ -47,7 +47,7 @@ class ToonSerializer:
         """
         lines: list[str] = []
         self._write_value(obj, 0, lines)
-        # Optimización: usar join una sola vez en lugar de múltiples concatenaciones
+        # Optimization: use join once instead of multiple concatenations
         if not lines:
             return "\n"
         return "\n".join(lines) + "\n"
@@ -75,18 +75,24 @@ class ToonSerializer:
             level: Current indentation level (number of spaces)
             lines: List of output lines to append to
         """
-        indent_str = self._get_indent(level)
-        if isinstance(obj, Mapping):
-            if not obj:
+        # Optimization: Check for empty containers first (common case)
+        if not obj:
+            indent_str = self._get_indent(level)
+            if isinstance(obj, Mapping):
                 lines.append(indent_str + "{}")
                 return
-            self._write_object(obj, level, lines)
-        elif isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray)):
-            if not obj:
+            if isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray)):
                 lines.append(indent_str + "[]")
                 return
+            # Empty string - fall through to scalar formatting
+        
+        # Non-empty or scalar values
+        if isinstance(obj, Mapping):
+            self._write_object(obj, level, lines)
+        elif isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray)):
             self._write_array(obj, level, lines)
         else:
+            indent_str = self._get_indent(level)
             lines.append(indent_str + self._format_scalar(obj))
 
     def _write_object(self, mapping: Mapping[str, Any], level: int, lines: list[str]) -> None:
@@ -180,7 +186,7 @@ class ToonSerializer:
             for key in schema.keys:
                 value = row.get(key)
                 cells.append(self._format_cell(value))
-            # Use comma as delimiter per spec - optimizado: join una vez
+            # Use comma as delimiter per spec - optimized: join once
             row_str = ",".join(cells)
             lines.append(inner_indent + row_str)
 
@@ -211,7 +217,7 @@ class ToonSerializer:
             for key in schema.keys:
                 value = row.get(key)
                 cells.append(self._format_cell(value))
-            # Optimizado: join una vez
+            # Optimized: join once
             row_str = " | ".join(cells)
             lines.append(inner_indent + f"| {row_str} |")
 
@@ -289,6 +295,11 @@ class ToonSerializer:
         Returns:
             Formatted string ready for table row
         """
+        # Handle empty containers first ([] and {})
+        inline = self._inline_container_repr(value)
+        if inline is not None:
+            return inline
+        
         if isinstance(value, str):
             # If string contains comma, pipe, or needs quotes, use quoted format
             if "," in value or "|" in value or string_needs_quotes(value):
@@ -339,10 +350,12 @@ class ToonSerializer:
         Returns:
             "{}" for empty dict, "[]" for empty list, None otherwise
         """
-        if isinstance(value, Mapping) and not value:
-            return "{}"
-        if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)) and not value:
-            return "[]"
+        # Optimization: Check emptiness first (cheaper than isinstance for non-empty)
+        if not value:
+            if isinstance(value, Mapping):
+                return "{}"
+            if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+                return "[]"
         return None
 
 

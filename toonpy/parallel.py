@@ -10,7 +10,7 @@ from __future__ import annotations
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from typing import Any, Callable, Sequence
 
-__all__ = ["parallel_serialize_chunks"]
+__all__ = ["parallel_serialize_chunks", "chunk_sequence"]
 
 
 def parallel_serialize_chunks(
@@ -47,9 +47,12 @@ def parallel_serialize_chunks(
     """
     executor_class = ThreadPoolExecutor if use_threads else ProcessPoolExecutor
     
+    # Optimization: Use executor.map() instead of submit/result pattern
+    # - More efficient: no intermediate futures list
+    # - Preserves order automatically
+    # - Better memory usage for large chunk lists
     with executor_class(max_workers=max_workers) as executor:
-        futures = [executor.submit(serializer_func, chunk) for chunk in chunks]
-        return [future.result() for future in futures]
+        return list(executor.map(serializer_func, chunks))
 
 
 def chunk_sequence(seq: Sequence[Any], chunk_size: int) -> list[Sequence[Any]]:
@@ -68,8 +71,6 @@ def chunk_sequence(seq: Sequence[Any], chunk_size: int) -> list[Sequence[Any]]:
         >>> len(chunks)
         4
     """
-    chunks = []
-    for i in range(0, len(seq), chunk_size):
-        chunks.append(seq[i : i + chunk_size])
-    return chunks
+    # Optimization: Use list comprehension (faster than append loop)
+    return [seq[i:i + chunk_size] for i in range(0, len(seq), chunk_size)]
 

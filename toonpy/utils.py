@@ -123,13 +123,12 @@ def string_needs_quotes(value: str) -> bool:
         >>> string_needs_quotes("")
         True
     """
-    if value == "":
+    # Optimization: Combined checks for better performance
+    # Empty string check is fastest, do it first
+    if not value:
         return True
-    if not is_safe_identifier(value):
-        return True
-    if any(ch.isspace() for ch in value):
-        return True
-    return False
+    # is_safe_identifier already checks the pattern, includes whitespace check
+    return not is_safe_identifier(value)
 
 
 def format_key(key: str) -> str:
@@ -210,9 +209,8 @@ def format_scalar(value: object) -> str:
 def guess_number(token: str) -> int | float | None:
     """Attempt to parse a token as a number.
     
-    Checks if a token matches the TOON number pattern and returns the
-    appropriate numeric type (int or float). Returns None if the token
-    is not a valid number.
+    Optimized version using try/except which is faster than regex for valid numbers.
+    Falls back to regex validation for edge cases.
     
     Args:
         token: String token to parse
@@ -230,20 +228,32 @@ def guess_number(token: str) -> int | float | None:
         >>> guess_number("not_a_number")
         None
     """
-    if not NUMBER_RE.match(token):
+    if not token:
         return None
-    if "." in token or "e" in token.lower():
-        return float(token)
-    return int(token)
+    
+    # Quick first character check (early rejection)
+    first = token[0]
+    if not (first.isdigit() or first == '-'):
+        return None
+    
+    # Try direct parsing (faster than regex for valid cases)
+    try:
+        # Detect floats by presence of . or e/E
+        if '.' in token or 'e' in token or 'E' in token:
+            val = float(token)
+            # Validate with regex to reject cases like "1.2.3" that float() partially accepts
+            if not NUMBER_RE.match(token):
+                return None
+            return val
+        return int(token)
+    except ValueError:
+        return None
 
 
 def split_escaped_row(line: str, separator: str = "|") -> List[str]:
     """Split a table row line by separator, respecting string quotes and escapes.
     
-    Parses a table row line (e.g., "| value1 | value2 |") into individual
-    cell values, correctly handling quoted strings and escape sequences.
-    This ensures that separators inside quoted strings are not treated as
-    delimiters.
+    Optimized version using string slicing instead of character-by-character list building.
     
     Args:
         line: Table row line to split
@@ -260,35 +270,49 @@ def split_escaped_row(line: str, separator: str = "|") -> List[str]:
         >>> split_escaped_row('| name | "value with | pipe" |')
         ['name', '"value with | pipe"']
     """
+    # Early return for optimization
+    if not line:
+        return []
+    
+    if separator not in line:
+        stripped = line.strip()
+        return [stripped] if stripped else []
+    
     parts: List[str] = []
-    buf: List[str] = []
+    start = 0
     in_string = False
-    escape = False
-    for ch in line:
-        if escape:
-            buf.append(ch)
-            escape = False
+    i = 0
+    line_len = len(line)
+    
+    while i < line_len:
+        ch = line[i]
+        
+        # Handle escape: skip next character
+        if ch == "\\" and i + 1 < line_len:
+            i += 2
             continue
-        if ch == "\\":
-            escape = True
-            continue
+        
         if ch == "\"":
             in_string = not in_string
-            buf.append(ch)
+            i += 1
             continue
+        
         if ch == separator and not in_string:
-            part = "".join(buf).strip()
-            if part.startswith(separator):
-                part = part[1:].strip()
+            # Use slicing instead of list construction
+            part = line[start:i].strip().strip(separator).strip()
+            if part:
+                parts.append(part)
+            start = i + 1
+        
+        i += 1
+    
+    # Process last part
+    if start < line_len:
+        part = line[start:].strip().strip(separator).strip()
+        if part:
             parts.append(part)
-            buf = []
-            continue
-        buf.append(ch)
-    if buf:
-        parts.append("".join(buf).strip())
-    # Trim empty trailing separators commonly written as "| value |"
-    cleaned = [p for p in (part.strip(separator).strip() for part in parts) if p != ""]
-    return cleaned or parts
+    
+    return parts if parts else [line.strip()]
 
 
 def tabular_schema(rows: Sequence[Mapping[str, object]]) -> TabularSchema | None:

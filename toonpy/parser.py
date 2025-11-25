@@ -5,6 +5,7 @@ Lexer and parser for TOON (Token-Oriented Object Notation).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from io import StringIO
 import json
 import re
 from typing import List, Sequence, Tuple
@@ -20,6 +21,17 @@ __all__ = ["from_toon"]
 
 COMMENT_PREFIXES = ("#", "//")
 TABLE_PREFIX = "@table"
+
+# Caché de literales comunes para optimización (O(1) lookup)
+_LITERAL_CACHE = {
+    "true": True, "True": True, "TRUE": True,
+    "false": False, "False": False, "FALSE": False,
+    "null": None, "None": None, "NULL": None,
+}
+
+# Regex compilados a nivel de módulo para mejor rendimiento
+_QUOTED_TABLE_PATTERN = re.compile(r'^"([^"]+)"\[(\d+)\]\{([^}]+)\}:$')
+_UNQUOTED_TABLE_PATTERN = re.compile(r'^([A-Za-z_][A-Za-z0-9_.]*)\[(\d+)\]\{([^}]+)\}:$')
 
 
 @dataclass(slots=True)
@@ -50,10 +62,7 @@ class ToonLexer:
             source: Raw TOON source text
         """
         # Optimización: normalizar line endings una sola vez
-        if "\r" in source:
-            self.source = source.replace("\r\n", "\n").replace("\r", "\n")
-        else:
-            self.source = source
+        self.source = source.replace("\r\n", "\n").replace("\r", "\n") if "\r" in source else source
 
     def iter_lines(self) -> List[Line]:
         """Tokenize source into Line objects.
@@ -99,27 +108,41 @@ class ToonLexer:
         Raises:
             ToonSyntaxError: If block comment is unterminated
         """
-        result: List[str] = []
+        # Early return si no hay comentarios de bloque
+        if "/*" not in text:
+            return text
+        
+        # Usar StringIO para mejor rendimiento con strings largos
+        result = StringIO()
         i = 0
         depth = 0
-        while i < len(text):
-            if text.startswith("/*", i):
-                depth += 1
-                i += 2
-                continue
-            if depth > 0:
-                if text.startswith("*/", i):
+        text_len = len(text)
+        
+        while i < text_len:
+            # Optimización: verificar dos caracteres a la vez
+            if i + 1 < text_len:
+                two_char = text[i:i+2]
+                if two_char == "/*":
+                    depth += 1
+                    i += 2
+                    continue
+                if depth > 0 and two_char == "*/":
                     depth -= 1
                     i += 2
                     continue
-                result.append("\n" if text[i] == "\n" else " ")
-                i += 1
-                continue
-            result.append(text[i])
+            
+            if depth > 0:
+                # Preservar newlines para mantener números de línea
+                result.write('\n' if text[i] == '\n' else ' ')
+            else:
+                result.write(text[i])
+            
             i += 1
+        
         if depth != 0:
             raise ToonSyntaxError("Unterminated block comment")
-        return "".join(result)
+        
+        return result.getvalue()
 
     @staticmethod
     def _strip_inline_comment(line: str) -> str:
@@ -136,32 +159,35 @@ class ToonLexer:
         """
         buf: List[str] = []
         in_string = False
-        escape = False
         i = 0
-        while i < len(line):
+        line_len = len(line)
+        
+        while i < line_len:
             ch = line[i]
-            if escape:
+            
+            # Manejar escape: consumir el backslash y el siguiente carácter
+            if ch == "\\" and i + 1 < line_len:
                 buf.append(ch)
-                escape = False
-                i += 1
+                buf.append(line[i + 1])
+                i += 2
                 continue
-            if ch == "\\":
-                buf.append(ch)
-                escape = True
-                i += 1
-                continue
+                
             if ch == "\"":
                 buf.append(ch)
                 in_string = not in_string
                 i += 1
                 continue
+            
             if not in_string:
-                if ch == "#" and not in_string:
+                if ch == "#":
                     break
-                if ch == "/" and i + 1 < len(line) and line[i + 1] == "/":
+                # Optimizar chequeo de //
+                if ch == "/" and i + 1 < line_len and line[i + 1] == "/":
                     break
+            
             buf.append(ch)
             i += 1
+        
         return "".join(buf).rstrip()
 
 
@@ -171,10 +197,6 @@ class ToonParser:
     Implements a recursive descent parser with indentation-based structure
     recognition. Supports objects, arrays, tables, scalars, and multiline strings.
     """
-    
-    # Compilar regex una sola vez (optimización)
-    _QUOTED_TABLE_PATTERN = re.compile(r'^"([^"]+)"\[(\d+)\]\{([^}]+)\}:$')
-    _UNQUOTED_TABLE_PATTERN = re.compile(r'^([A-Za-z_][A-Za-z0-9_.]*)\[(\d+)\]\{([^}]+)\}:$')
     
     def __init__(self, source: str, *, permissive: bool = False) -> None:
         """Initialize the parser.
@@ -370,7 +392,7 @@ class ToonParser:
         content = content.strip()
         # Pattern: key[N]{field1,field2}: where key can be quoted or unquoted
         # Try quoted key first: "key"[N]{fields}:
-        match = self._QUOTED_TABLE_PATTERN.match(content)
+        match = _QUOTED_TABLE_PATTERN.match(content)
         if match:
             key = match.group(1)
             length = int(match.group(2))
@@ -378,7 +400,7 @@ class ToonParser:
             fields = [f.strip() for f in fields_str.split(",") if f.strip()]
             return (key, length, fields)
         # Try unquoted key: key[N]{fields}:
-        match = self._UNQUOTED_TABLE_PATTERN.match(content)
+        match = _UNQUOTED_TABLE_PATTERN.match(content)
         if match:
             key = match.group(1)
             length = int(match.group(2))
@@ -422,9 +444,9 @@ class ToonParser:
                     line.line_no,
                     1,
                 )
-            row: dict[str, object] = {}
-            for key, token in zip(fields, values):
-                row[key] = self._parse_token(token.strip(), line)
+            # Usar dict comprehension para mejor rendimiento
+            row = {key: self._parse_token(token.strip(), line) 
+                   for key, token in zip(fields, values)}
             rows.append(row)
             index += 1
         
@@ -473,9 +495,9 @@ class ToonParser:
                     line.line_no,
                     1,
                 )
-            row: dict[str, object] = {}
-            for key, token in zip(header, values):
-                row[key] = self._parse_token(token, line)
+            # Usar dict comprehension para mejor rendimiento
+            row = {key: self._parse_token(token, line) 
+                   for key, token in zip(header, values)}
             rows.append(row)
             index += 1
         return rows, index
@@ -509,32 +531,42 @@ class ToonParser:
             ToonSyntaxError: If token is invalid or empty
         """
         token = token.strip()
-        if token == "":
+        if not token:
             raise ToonSyntaxError("Empty value", line.line_no, 1)
+        
+        # Caché de literales comunes (O(1) lookup) - evita .lower() innecesario
+        # Usar 'in' en lugar de .get() porque None es un valor válido
+        if token in _LITERAL_CACHE:
+            return _LITERAL_CACHE[token]
+        
+        # Contenedores vacíos
         if token == "[]":
             return []
         if token == "{}":
             return {}
-        if token.startswith('"""'):
-            if token.endswith('"""') and len(token) >= 6:
-                return token[3:-3]
-            raise ToonSyntaxError("Unterminated multiline string", line.line_no, 1)
-        if token.startswith("\""):
+        
+        # Strings con comillas (verificar primer carácter es más rápido)
+        first_char = token[0]
+        if first_char == "\"":
+            if token.startswith('"""'):
+                if token.endswith('"""') and len(token) >= 6:
+                    return token[3:-3]
+                raise ToonSyntaxError("Unterminated multiline string", line.line_no, 1)
             return self._parse_string_literal(token, line)
-        lowered = token.lower()
-        if lowered == "true":
-            return True
-        if lowered == "false":
-            return False
-        if lowered == "null":
-            return None
-        number = guess_number(token)
-        if number is not None:
-            return number
+        
+        # Números (optimización: verificar primer carácter antes de llamar función)
+        if first_char.isdigit() or (first_char == '-' and len(token) > 1):
+            number = guess_number(token)
+            if number is not None:
+                return number
+        
+        # Identificadores seguros
         if is_safe_identifier(token):
             return token
+        
         if self.permissive:
             return token
+        
         raise ToonSyntaxError("Invalid unquoted string literal", line.line_no, 1)
 
     def _parse_key(self, token: str, line: Line) -> str:
@@ -544,7 +576,7 @@ class ToonParser:
         unquoted keys must match identifier rules.
         
         Args:
-            token: Key token to parse
+            token: Key token to parse (already stripped by caller)
             line: Line object for error reporting
             
         Returns:
@@ -553,8 +585,8 @@ class ToonParser:
         Raises:
             ToonSyntaxError: If key is invalid (in strict mode)
         """
-        token = token.strip()
-        if token.startswith("\""):
+        # Nota: token ya viene stripped desde _split_key_value
+        if token and token[0] == "\"":
             return self._parse_string_literal(token, line)
         if not is_safe_identifier(token):
             if self.permissive:
