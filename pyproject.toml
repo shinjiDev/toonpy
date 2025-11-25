@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "toontools"
-version = "0.3.0"
+version = "0.4.0"
 description = "Conversion utilities between JSON, YAML and TOON (Token-Oriented Object Notation)"
 readme = "README.md"
 authors = [
