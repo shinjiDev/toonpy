@@ -13,8 +13,12 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-from .api import from_toon, to_toon
+from .api import from_toon, to_toon, HAS_YAML
 from .errors import ToonError, ToonSyntaxError
+
+# Optional YAML imports
+if HAS_YAML:
+    from .api import to_yaml_from_toon, to_toon_from_yaml
 
 MODES = ("auto", "compact", "readable")
 
@@ -49,6 +53,19 @@ def build_parser() -> argparse.ArgumentParser:
     fmt_cmd.add_argument("--out", dest="output_path", required=True, help="Output TOON file")
     fmt_cmd.add_argument("--indent", type=int, default=2, help="Indentation size")
     fmt_cmd.add_argument("--mode", choices=MODES, default="readable", help="Serialization mode")
+
+    # YAML commands (only if PyYAML is installed)
+    if HAS_YAML:
+        yaml_to_toon_cmd = sub.add_parser("yaml-to-toon", help="Convert YAML to TOON")
+        yaml_to_toon_cmd.add_argument("--in", dest="input_path", required=True, help="Input YAML file")
+        yaml_to_toon_cmd.add_argument("--out", dest="output_path", required=True, help="Output TOON file")
+        yaml_to_toon_cmd.add_argument("--mode", choices=MODES, default="auto", help="Serialization mode")
+        yaml_to_toon_cmd.add_argument("--indent", type=int, default=2, help="Indentation size")
+
+        toon_to_yaml_cmd = sub.add_parser("toon-to-yaml", help="Convert TOON to YAML")
+        toon_to_yaml_cmd.add_argument("--in", dest="input_path", required=True, help="Input TOON file")
+        toon_to_yaml_cmd.add_argument("--out", dest="output_path", required=True, help="Output YAML file")
+        toon_to_yaml_cmd.add_argument("--permissive", action="store_true", help="Enable permissive parse mode")
 
     return parser
 
@@ -141,6 +158,60 @@ def _read_json(path: str) -> object:
         return json.load(handle)
 
 
+def cmd_yaml_to_toon(args: argparse.Namespace) -> int:
+    """Execute the 'yaml-to-toon' subcommand: Convert YAML to TOON.
+    
+    Reads a YAML file, converts it to TOON format, and writes the result
+    to the output file.
+    
+    Args:
+        args: Parsed command-line arguments with input_path, output_path,
+              indent, and mode attributes
+        
+    Returns:
+        Exit code (0 for success)
+        
+    Raises:
+        yaml.YAMLError: If input file is not valid YAML
+        OSError: If file I/O fails
+    """
+    if not HAS_YAML:
+        print("Error: PyYAML is not installed. Install with: pip install toontools[yaml]", file=sys.stderr)
+        return 3
+    
+    text = Path(args.input_path).read_text(encoding="utf-8")
+    toon_text = to_toon_from_yaml(text, indent=args.indent, mode=args.mode)
+    Path(args.output_path).write_text(toon_text, encoding="utf-8")
+    return 0
+
+
+def cmd_toon_to_yaml(args: argparse.Namespace) -> int:
+    """Execute the 'toon-to-yaml' subcommand: Convert TOON to YAML.
+    
+    Reads a TOON file, parses it, and writes the result as YAML to the
+    output file.
+    
+    Args:
+        args: Parsed command-line arguments with input_path, output_path,
+              and permissive attributes
+        
+    Returns:
+        Exit code (0 for success)
+        
+    Raises:
+        ToonSyntaxError: If TOON file is malformed
+        OSError: If file I/O fails
+    """
+    if not HAS_YAML:
+        print("Error: PyYAML is not installed. Install with: pip install toontools[yaml]", file=sys.stderr)
+        return 3
+    
+    text = Path(args.input_path).read_text(encoding="utf-8")
+    yaml_text = to_yaml_from_toon(text, mode="permissive" if args.permissive else "strict")
+    Path(args.output_path).write_text(yaml_text, encoding="utf-8")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Main entry point for the toonpy CLI.
     
@@ -166,6 +237,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             return cmd_from(args)
         if args.command == "fmt":
             return cmd_fmt(args)
+        if args.command == "yaml-to-toon":
+            return cmd_yaml_to_toon(args)
+        if args.command == "toon-to-yaml":
+            return cmd_toon_to_yaml(args)
         parser.error("Unknown command")
     except ToonSyntaxError as exc:
         print(f"TOON syntax error: {exc}", file=sys.stderr)

@@ -18,6 +18,14 @@ from .parser import from_toon as _from_toon
 from .serializer import to_toon as _to_toon
 from .utils import TabularSchema, tabular_schema, token_length
 
+# Optional YAML support
+try:
+    import yaml
+    HAS_YAML = True
+except ImportError:
+    HAS_YAML = False
+    yaml = None  # type: ignore
+
 __all__ = [
     "to_toon",
     "from_toon",
@@ -25,6 +33,11 @@ __all__ = [
     "suggest_tabular",
     "validate_toon",
     "TabularSuggestion",
+    # YAML support
+    "to_yaml_from_toon",
+    "to_toon_from_yaml",
+    "stream_yaml_to_toon",
+    "HAS_YAML",
 ]
 
 
@@ -214,4 +227,139 @@ def validate_toon(source: str, *, strict: bool = True) -> tuple[bool, List[Valid
     except ToonSyntaxError as exc:
         return False, [ValidationError(str(exc), exc.line, exc.column)]
     return True, []
+
+
+# ============================================================================
+# YAML Support Functions
+# ============================================================================
+
+
+def to_yaml_from_toon(source: str, *, mode: Literal["strict", "permissive"] = "strict") -> str:
+    """Convert TOON string to YAML string.
+    
+    Parses TOON format and converts it to YAML format. This is a convenience
+    function that combines from_toon() and yaml.dump().
+    
+    Args:
+        source: TOON-formatted string to convert
+        mode: Parsing mode - "strict" or "permissive"
+        
+    Returns:
+        YAML-formatted string
+        
+    Raises:
+        ImportError: If PyYAML is not installed
+        ToonSyntaxError: If TOON string is malformed
+        
+    Example:
+        >>> toon = 'name: "Luz"\\nactive: true'
+        >>> yaml_str = to_yaml_from_toon(toon)
+        >>> 'name: Luz' in yaml_str
+        True
+        
+    Note:
+        Requires PyYAML to be installed: pip install toontools[yaml]
+    """
+    if not HAS_YAML:
+        raise ImportError(
+            "PyYAML is required for YAML support. "
+            "Install it with: pip install toontools[yaml]"
+        )
+    data = from_toon(source, mode=mode)
+    return yaml.dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+
+def to_toon_from_yaml(
+    source: str,
+    *,
+    indent: int = 2,
+    mode: Literal["auto", "compact", "readable"] = "auto"
+) -> str:
+    """Convert YAML string to TOON string.
+    
+    Parses YAML format and converts it to TOON format. This is a convenience
+    function that combines yaml.safe_load() and to_toon().
+    
+    Args:
+        source: YAML-formatted string to convert
+        indent: Number of spaces per indentation level (default: 2)
+        mode: Serialization mode - "auto", "compact", or "readable"
+        
+    Returns:
+        TOON-formatted string
+        
+    Raises:
+        ImportError: If PyYAML is not installed
+        yaml.YAMLError: If YAML string is malformed
+        
+    Example:
+        >>> yaml_str = 'name: Luz\\nactive: true'
+        >>> toon = to_toon_from_yaml(yaml_str)
+        >>> 'name: "Luz"' in toon or 'name: Luz' in toon
+        True
+        
+    Note:
+        Requires PyYAML to be installed: pip install toontools[yaml]
+    """
+    if not HAS_YAML:
+        raise ImportError(
+            "PyYAML is required for YAML support. "
+            "Install it with: pip install toontools[yaml]"
+        )
+    data = yaml.safe_load(source)
+    return to_toon(data, indent=indent, mode=mode)
+
+
+def stream_yaml_to_toon(
+    fileobj_in: TextIO,
+    fileobj_out: TextIO,
+    *,
+    chunk_size: int = 65_536,
+    indent: int = 2,
+    mode: Literal["auto", "compact", "readable"] = "auto",
+) -> int:
+    """Stream YAML from input file to TOON output file.
+    
+    Reads YAML data from a text file object in chunks, parses it, converts
+    to TOON format, and writes to an output file object. Useful for
+    processing large files without loading everything into memory.
+    
+    Args:
+        fileobj_in: Input file object containing YAML (must be opened in text mode)
+        fileobj_out: Output file object for TOON (must be opened in text mode)
+        chunk_size: Size of chunks to read from input (default: 65536 bytes)
+        indent: Number of spaces per indentation level (default: 2)
+        mode: Serialization mode - "auto", "compact", or "readable"
+        
+    Returns:
+        Number of bytes written to output
+        
+    Raises:
+        ImportError: If PyYAML is not installed
+        yaml.YAMLError: If input is not valid YAML
+        ToonSyntaxError: If conversion fails (should not occur)
+        
+    Example:
+        >>> with open("input.yaml", "r") as fin, open("output.toon", "w") as fout:
+        ...     bytes_written = stream_yaml_to_toon(fin, fout, mode="auto")
+        
+    Note:
+        Requires PyYAML to be installed: pip install toontools[yaml]
+    """
+    if not HAS_YAML:
+        raise ImportError(
+            "PyYAML is required for YAML support. "
+            "Install it with: pip install toontools[yaml]"
+        )
+    buffer = io.StringIO()
+    while True:
+        chunk = fileobj_in.read(chunk_size)
+        if not chunk:
+            break
+        buffer.write(chunk)
+    buffer.seek(0)
+    data = yaml.safe_load(buffer)
+    toon_text = to_toon(data, indent=indent, mode=mode)
+    fileobj_out.write(toon_text)
+    return len(toon_text)
 

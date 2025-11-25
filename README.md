@@ -10,7 +10,7 @@
 [![Coverage](https://img.shields.io/badge/coverage-90%25-green.svg)](https://github.com/shinjidev/toonpy)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/shinjidev)
 
-A production-grade Python library and CLI that converts data between JSON and TOON (Token-Oriented Object Notation) while fully conforming to **TOON SPEC v2.0**. Perfect for developers and data engineers who need efficient, token-optimized data serialization.
+A production-grade Python library and CLI that converts data between JSON, YAML, and TOON (Token-Oriented Object Notation) while fully conforming to **TOON SPEC v2.0**. Perfect for developers and data engineers who need efficient, token-optimized data serialization.
 
 **📦 Current Version: 0.3.0** - Major performance release with up to 70% speed improvements! See [What's New in v0.3.0](#-whats-new-in-v030) and [Performance](#-performance) sections for details.
 
@@ -70,6 +70,13 @@ The `toonpy` library provides comprehensive JSON ↔ TOON conversion capabilitie
 * **Streaming helpers** for large files
 * **Formatting tools** for code style consistency
 
+### 🔄 5. YAML Support (Optional)
+
+* **YAML ↔ TOON conversion** with optimized performance
+* **Streaming YAML to TOON** for large files
+* **CLI commands** for YAML file conversion
+* **Full Unicode support** and proper type handling
+
 ## 📦 Installation
 
 ### Install from PyPI (Recommended)
@@ -99,9 +106,20 @@ pip install .
 # Or install with optional extras
 pip install .[tests]      # Include testing dependencies
 pip install .[examples]   # Include tiktoken for token counting
+pip install .[yaml]       # Include PyYAML for YAML support
 ```
 
 **Requirements:** Python 3.9+
+
+### Optional: YAML Support
+
+To enable YAML ↔ TOON conversion:
+
+```bash
+pip install toontools[yaml]
+# or
+pip install PyYAML>=6.0
+```
 
 ## 🚀 Quick Start
 
@@ -198,6 +216,66 @@ with open("large_data.json", "r") as fin, open("output.toon", "w") as fout:
     print(f"Converted {bytes_written} bytes")
 ```
 
+#### YAML Support
+
+**Convert YAML to TOON:**
+
+```python
+from toontools import to_toon_from_yaml
+
+yaml_str = """
+crew:
+  - id: 1
+    name: Luz
+    role: Magic user
+  - id: 2
+    name: Amity
+    role: Strategist
+"""
+
+toon_str = to_toon_from_yaml(yaml_str, mode="auto")
+print(toon_str)
+# Output:
+# crew[2]{id,name,role}:
+#   1,Luz,"Magic user"
+#   2,Amity,Strategist
+```
+
+**Convert TOON to YAML:**
+
+```python
+from toontools import to_yaml_from_toon
+
+toon_str = """
+crew[2]{id,name}:
+  1,Luz
+  2,Amity
+active: true
+"""
+
+yaml_str = to_yaml_from_toon(toon_str)
+print(yaml_str)
+# Output:
+# crew:
+# - id: 1
+#   name: Luz
+# - id: 2
+#   name: Amity
+# active: true
+```
+
+**Stream YAML to TOON:**
+
+```python
+from toontools import stream_yaml_to_toon
+
+with open("data.yaml", "r") as fin, open("output.toon", "w") as fout:
+    bytes_written = stream_yaml_to_toon(fin, fout, mode="auto")
+    print(f"Converted {bytes_written} bytes")
+```
+
+**Note:** Requires `pip install toontools[yaml]` or `pip install PyYAML>=6.0`
+
 ### Command-Line Interface
 
 #### Convert JSON to TOON
@@ -217,6 +295,20 @@ toonpy from --in data.toon --out data.json --permissive
 ```bash
 toonpy fmt --in data.toon --out data.formatted.toon --mode readable
 ```
+
+#### Convert YAML to TOON
+
+```bash
+toonpy yaml-to-toon --in data.yaml --out data.toon --mode auto
+```
+
+#### Convert TOON to YAML
+
+```bash
+toonpy toon-to-yaml --in data.toon --out data.yaml
+```
+
+**Note:** YAML commands require `pip install toontools[yaml]`
 
 **Exit Codes:**
 - `0` - Success
