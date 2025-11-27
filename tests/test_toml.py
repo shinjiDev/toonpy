@@ -7,8 +7,6 @@ error handling, edge cases, and streaming functionality.
 
 import io
 import pytest
-import tomli
-import tomli_w
 
 from toonpy.api import (
     HAS_TOML,
@@ -17,6 +15,13 @@ from toonpy.api import (
     stream_toml_to_toon,
 )
 
+# Conditional imports for TOML support
+if HAS_TOML:
+    import tomli
+    import tomli_w
+else:
+    tomli = None
+    tomli_w = None
 
 # Skip all tests if TOML support is not available
 pytestmark = pytest.mark.skipif(not HAS_TOML, reason="TOML support not installed")
