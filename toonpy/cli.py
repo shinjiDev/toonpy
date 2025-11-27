@@ -13,12 +13,16 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-from .api import from_toon, to_toon, HAS_YAML
+from .api import from_toon, to_toon, HAS_YAML, HAS_TOML
 from .errors import ToonError, ToonSyntaxError
 
 # Optional YAML imports
 if HAS_YAML:
     from .api import to_yaml_from_toon, to_toon_from_yaml
+
+# Optional TOML imports
+if HAS_TOML:
+    from .api import to_toml_from_toon, to_toon_from_toml
 
 MODES = ("auto", "compact", "readable")
 
@@ -66,6 +70,19 @@ def build_parser() -> argparse.ArgumentParser:
         toon_to_yaml_cmd.add_argument("--in", dest="input_path", required=True, help="Input TOON file")
         toon_to_yaml_cmd.add_argument("--out", dest="output_path", required=True, help="Output YAML file")
         toon_to_yaml_cmd.add_argument("--permissive", action="store_true", help="Enable permissive parse mode")
+
+    # TOML commands (only if tomli/tomli_w are installed)
+    if HAS_TOML:
+        toml_to_toon_cmd = sub.add_parser("toml-to-toon", help="Convert TOML to TOON")
+        toml_to_toon_cmd.add_argument("--in", dest="input_path", required=True, help="Input TOML file")
+        toml_to_toon_cmd.add_argument("--out", dest="output_path", required=True, help="Output TOON file")
+        toml_to_toon_cmd.add_argument("--mode", choices=MODES, default="auto", help="Serialization mode")
+        toml_to_toon_cmd.add_argument("--indent", type=int, default=2, help="Indentation size")
+
+        toon_to_toml_cmd = sub.add_parser("toon-to-toml", help="Convert TOON to TOML")
+        toon_to_toml_cmd.add_argument("--in", dest="input_path", required=True, help="Input TOON file")
+        toon_to_toml_cmd.add_argument("--out", dest="output_path", required=True, help="Output TOML file")
+        toon_to_toml_cmd.add_argument("--permissive", action="store_true", help="Enable permissive parse mode")
 
     return parser
 
@@ -212,6 +229,60 @@ def cmd_toon_to_yaml(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_toml_to_toon(args: argparse.Namespace) -> int:
+    """Execute the 'toml-to-toon' subcommand: Convert TOML to TOON.
+    
+    Reads a TOML file, converts it to TOON format, and writes the result
+    to the output file.
+    
+    Args:
+        args: Parsed command-line arguments with input_path, output_path,
+              indent, and mode attributes
+        
+    Returns:
+        Exit code (0 for success)
+        
+    Raises:
+        tomli.TOMLDecodeError: If input file is not valid TOML
+        OSError: If file I/O fails
+    """
+    if not HAS_TOML:
+        print("Error: tomli is not installed. Install with: pip install toontools[toml]", file=sys.stderr)
+        return 3
+    
+    text = Path(args.input_path).read_text(encoding="utf-8")
+    toon_text = to_toon_from_toml(text, indent=args.indent, mode=args.mode)
+    Path(args.output_path).write_text(toon_text, encoding="utf-8")
+    return 0
+
+
+def cmd_toon_to_toml(args: argparse.Namespace) -> int:
+    """Execute the 'toon-to-toml' subcommand: Convert TOON to TOML.
+    
+    Reads a TOON file, parses it, and writes the result as TOML to the
+    output file.
+    
+    Args:
+        args: Parsed command-line arguments with input_path, output_path,
+              and permissive attributes
+        
+    Returns:
+        Exit code (0 for success)
+        
+    Raises:
+        ToonSyntaxError: If TOON file is malformed
+        OSError: If file I/O fails
+    """
+    if not HAS_TOML:
+        print("Error: tomli_w is not installed. Install with: pip install toontools[toml]", file=sys.stderr)
+        return 3
+    
+    text = Path(args.input_path).read_text(encoding="utf-8")
+    toml_text = to_toml_from_toon(text)
+    Path(args.output_path).write_text(toml_text, encoding="utf-8")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Main entry point for the toonpy CLI.
     
@@ -241,6 +312,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             return cmd_yaml_to_toon(args)
         if args.command == "toon-to-yaml":
             return cmd_toon_to_yaml(args)
+        if args.command == "toml-to-toon":
+            return cmd_toml_to_toon(args)
+        if args.command == "toon-to-toml":
+            return cmd_toon_to_toml(args)
         parser.error("Unknown command")
     except ToonSyntaxError as exc:
         print(f"TOON syntax error: {exc}", file=sys.stderr)

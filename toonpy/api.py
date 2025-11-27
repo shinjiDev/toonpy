@@ -26,6 +26,16 @@ except ImportError:
     HAS_YAML = False
     yaml = None  # type: ignore
 
+# Optional TOML support
+try:
+    import tomli
+    import tomli_w
+    HAS_TOML = True
+except ImportError:
+    HAS_TOML = False
+    tomli = None  # type: ignore
+    tomli_w = None  # type: ignore
+
 __all__ = [
     "to_toon",
     "from_toon",
@@ -38,6 +48,11 @@ __all__ = [
     "to_toon_from_yaml",
     "stream_yaml_to_toon",
     "HAS_YAML",
+    # TOML support
+    "to_toml_from_toon",
+    "to_toon_from_toml",
+    "stream_toml_to_toon",
+    "HAS_TOML",
 ]
 
 
@@ -359,6 +374,136 @@ def stream_yaml_to_toon(
         buffer.write(chunk)
     buffer.seek(0)
     data = yaml.safe_load(buffer)
+    toon_text = to_toon(data, indent=indent, mode=mode)
+    fileobj_out.write(toon_text)
+    return len(toon_text)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TOML Support (Optional)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def to_toml_from_toon(source: str) -> str:
+    """Convert TOON format to TOML format string.
+    
+    Parses TOON format and converts it to TOML format. This is a convenience
+    function that combines from_toon() and tomli_w.dumps().
+    
+    Args:
+        source: TOON-formatted string to convert
+        
+    Returns:
+        TOML-formatted string
+        
+    Raises:
+        ImportError: If tomli/tomli_w are not installed
+        ToonSyntaxError: If TOON string is malformed
+        
+    Example:
+        >>> toon_str = 'name: "Luz"\\nactive: true'
+        >>> toml = to_toml_from_toon(toon_str)
+        >>> 'name = "Luz"' in toml
+        True
+        
+    Note:
+        Requires tomli/tomli_w to be installed: pip install toontools[toml]
+    """
+    if not HAS_TOML:
+        raise ImportError(
+            "tomli and tomli_w are required for TOML support. "
+            "Install them with: pip install toontools[toml]"
+        )
+    data = from_toon(source)
+    if not isinstance(data, dict):
+        raise ValueError("TOML root must be a table (dictionary), got: " + type(data).__name__)
+    return tomli_w.dumps(data)
+
+
+def to_toon_from_toml(source: str, *, indent: int = 2, mode: Literal["auto", "compact", "readable"] = "auto") -> str:
+    """Convert TOML format to TOON format string.
+    
+    Parses TOML format and converts it to TOON format. This is a convenience
+    function that combines tomli.loads() and to_toon().
+    
+    Args:
+        source: TOML-formatted string to convert
+        indent: Number of spaces per indentation level (default: 2)
+        mode: Serialization mode - "auto", "compact", or "readable"
+        
+    Returns:
+        TOON-formatted string
+        
+    Raises:
+        ImportError: If tomli is not installed
+        tomli.TOMLDecodeError: If TOML string is malformed
+        
+    Example:
+        >>> toml_str = 'name = "Luz"\\nactive = true'
+        >>> toon = to_toon_from_toml(toml_str)
+        >>> 'name: "Luz"' in toon or 'name: Luz' in toon
+        True
+        
+    Note:
+        Requires tomli to be installed: pip install toontools[toml]
+    """
+    if not HAS_TOML:
+        raise ImportError(
+            "tomli is required for TOML support. "
+            "Install it with: pip install toontools[toml]"
+        )
+    data = tomli.loads(source)
+    return to_toon(data, indent=indent, mode=mode)
+
+
+def stream_toml_to_toon(
+    fileobj_in: TextIO,
+    fileobj_out: TextIO,
+    *,
+    chunk_size: int = 65_536,
+    indent: int = 2,
+    mode: Literal["auto", "compact", "readable"] = "auto",
+) -> int:
+    """Stream TOML from input file to TOON output file.
+    
+    Reads TOML data from a text file object in chunks, parses it, converts
+    to TOON format, and writes to an output file object. Useful for
+    processing large files without loading everything into memory.
+    
+    Args:
+        fileobj_in: Input file object containing TOML (must be opened in text mode)
+        fileobj_out: Output file object for TOON (must be opened in text mode)
+        chunk_size: Size of chunks to read from input (default: 65536 bytes)
+        indent: Number of spaces per indentation level (default: 2)
+        mode: Serialization mode - "auto", "compact", or "readable"
+        
+    Returns:
+        Number of bytes written to output
+        
+    Raises:
+        ImportError: If tomli is not installed
+        tomli.TOMLDecodeError: If input is not valid TOML
+        ToonSyntaxError: If conversion fails (should not occur)
+        
+    Example:
+        >>> with open("input.toml", "r") as fin, open("output.toon", "w") as fout:
+        ...     bytes_written = stream_toml_to_toon(fin, fout, mode="auto")
+        
+    Note:
+        Requires tomli to be installed: pip install toontools[toml]
+    """
+    if not HAS_TOML:
+        raise ImportError(
+            "tomli is required for TOML support. "
+            "Install it with: pip install toontools[toml]"
+        )
+    buffer = io.StringIO()
+    while True:
+        chunk = fileobj_in.read(chunk_size)
+        if not chunk:
+            break
+        buffer.write(chunk)
+    buffer.seek(0)
+    data = tomli.loads(buffer.getvalue())
     toon_text = to_toon(data, indent=indent, mode=mode)
     fileobj_out.write(toon_text)
     return len(toon_text)

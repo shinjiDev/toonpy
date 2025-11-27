@@ -10,32 +10,41 @@
 [![Coverage](https://img.shields.io/badge/coverage-90%25-green.svg)](https://github.com/shinjidev/toonpy)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/shinjidev)
 
-A production-grade Python library and CLI that converts data between JSON, YAML, and TOON (Token-Oriented Object Notation) while fully conforming to **TOON SPEC v2.0**. Perfect for developers and data engineers who need efficient, token-optimized data serialization.
+A production-grade Python library and CLI that converts data between JSON, YAML, TOML, and TOON (Token-Oriented Object Notation) while fully conforming to **TOON SPEC v2.0**. Perfect for developers and data engineers who need efficient, token-optimized data serialization.
 
-**📦 Current Version: 0.4.0** - YAML support added with optional dependency model! See [What's New in v0.4.0](#-whats-new-in-v040) and [Performance](#-performance) sections for details.
+**📦 Current Version: 0.5.0** - TOML support added! Now supporting JSON, YAML, and TOML formats. See [What's New in v0.5.0](#-whats-new-in-v050) and [Performance](#-performance) sections for details.
 
 **✅ Full TOON SPEC v2.0 Compliance** - This library implements all examples from the [official TOON specification repository](https://github.com/toon-format/spec/tree/main/examples), ensuring complete compatibility with the standard.
 
-## 🚀 What's New in v0.4.0
+## 🚀 What's New in v0.5.0
 
-**YAML Support Release** (November 2025) - This version adds comprehensive YAML support with a smart optional dependency model:
+**TOML Support Release** (November 2025) - This version adds comprehensive TOML support, completing our multi-format ecosystem:
 
-- 🔄 **YAML ↔ TOON conversion** - Bidirectional conversion with streaming support
-- 📦 **Optional dependency model** - Zero-dependency core, install YAML support only if needed: `pip install toontools[yaml]`
-- 🎯 **CLI commands** - New `yaml-to-toon` and `toon-to-yaml` commands
-- ⚡ **High performance** - YAML conversion with minimal overhead (2-9%)
-- 📚 **Design philosophy docs** - New `DESIGN_PHILOSOPHY.md` explaining architectural decisions
-- ✅ **22 new tests** - Comprehensive YAML test coverage
+- 🔄 **TOML ↔ TOON conversion** - Bidirectional conversion with streaming support
+- 📦 **Optional dependency model** - Zero-dependency core, install TOML support only if needed: `pip install toontools[toml]`
+- 🎯 **CLI commands** - New `toml-to-toon` and `toon-to-toml` commands
+- ⚡ **High performance** - TOML conversion with 124-196% overhead vs pure TOML parsing
+- 💾 **Space efficiency** - TOON format saves up to 53% space for array-of-tables data
+- ✅ **29 new tests** - Comprehensive TOML test coverage with 100% pass rate
+- 📊 **Benchmark suite** - Detailed performance analysis for all conversion scenarios
+
+**Key Performance Metrics:**
+| Scenario | TOML → TOON Time | Space Savings | Round-trip |
+|----------|------------------|---------------|------------|
+| Simple table | 0.025 ms | -15.6% | ✅ YES |
+| Nested tables | 0.046 ms | -16.4% | ✅ YES |
+| Array of tables | 0.080 ms | **+47.1%** | ✅ YES |
+| Complex config | 0.103 ms | -22.4% | ✅ YES |
+| Large dataset (100 entries) | 1.39 ms | **+53.1%** | ✅ YES |
 
 **Why Optional Dependencies?**
 - **Lightweight core**: Keep `toontools` dependency-free for JSON ↔ TOON workflows
-- **Install what you need**: Only add PyYAML if you need YAML support
+- **Install what you need**: Only add PyYAML or tomli/tomli-w if you need YAML/TOML support
 - **Best of both worlds**: Zero-dependency simplicity + extended format support
 
-**Previous Release - v0.3.0** (November 2025):
-- ⚡ **Parser: 20-50% faster** - Optimized literal parsing, comment removal, and table processing
-- 🚀 **Serializer: Up to 70% faster** - Streamlined type checking and container handling
-- 🔢 **Utils: 10-15% faster** - Improved number parsing and string operations
+**Previous Releases:**
+- **v0.4.0** (November 2025): YAML support with optional dependencies
+- **v0.3.0** (November 2025): Major performance improvements (20-70% faster)
 
 **Backward Compatibility:** ✅ **100% compatible** with all previous versions - drop-in replacement, no code changes required!
 
@@ -43,7 +52,7 @@ See [RELEASE_NOTES.md](RELEASE_NOTES.md) for complete details and [CHANGELOG.md]
 
 ## ✨ Features
 
-The `toonpy` library provides comprehensive JSON ↔ TOON conversion capabilities:
+The `toonpy` library provides comprehensive JSON / YAML / TOML ↔ TOON conversion capabilities:
 
 ### 🔧 1. Lossless Conversion
 
@@ -73,12 +82,19 @@ The `toonpy` library provides comprehensive JSON ↔ TOON conversion capabilitie
 * **Streaming helpers** for large files
 * **Formatting tools** for code style consistency
 
-### 🔄 5. YAML Support (Optional)
+### 🔄 5. Multi-Format Support (Optional)
 
+**YAML Support:**
 * **YAML ↔ TOON conversion** with optimized performance
 * **Streaming YAML to TOON** for large files
 * **CLI commands** for YAML file conversion
 * **Full Unicode support** and proper type handling
+
+**TOML Support:**
+* **TOML ↔ TOON conversion** with high performance
+* **Up to 53% space savings** for array-of-tables data
+* **CLI commands** for TOML file conversion
+* **Round-trip data integrity** preservation
 
 ## 📦 Installation
 
@@ -91,7 +107,7 @@ pip install toontools
 Or install a specific version:
 
 ```bash
-pip install toontools==0.4.0
+pip install toontools==0.5.0
 ```
 
 **📦 PyPI Package:** [toontools on PyPI](https://pypi.org/project/toontools/) | **Latest: v0.3.0**
@@ -124,6 +140,16 @@ To enable YAML ↔ TOON conversion:
 pip install toontools[yaml]
 # or
 pip install PyYAML>=6.0
+```
+
+### Optional: TOML Support
+
+To enable TOML ↔ TOON conversion:
+
+```bash
+pip install toontools[toml]
+# or
+pip install tomli>=2.0 tomli-w>=1.0
 ```
 
 **Why optional?** YAML support is opt-in to keep the core library lightweight (~60KB, 0 dependencies). Most users only need JSON ↔ TOON conversion. If you need YAML support, simply install the extra and all YAML functions become available automatically.
@@ -283,6 +309,77 @@ with open("data.yaml", "r") as fin, open("output.toon", "w") as fout:
 
 **Note:** Requires `pip install toontools[yaml]` or `pip install PyYAML>=6.0`
 
+#### TOML Support
+
+**Convert TOML to TOON:**
+
+```python
+from toontools import to_toon_from_toml
+
+toml_str = """
+[user]
+name = "Luz Noceda"
+age = 14
+active = true
+
+[[crew]]
+id = 1
+name = "Luz"
+role = "Human"
+
+[[crew]]
+id = 2
+name = "Eda"
+role = "Witch"
+"""
+
+toon_str = to_toon_from_toml(toml_str, mode="auto")
+print(toon_str)
+# Output uses compact tabular format for crew array
+```
+
+**Convert TOON to TOML:**
+
+```python
+from toontools import to_toml_from_toon
+
+toon_str = """
+user:
+  name: "Luz Noceda"
+  age: 14
+  active: true
+
+crew[2]{id,name,role}:
+  1,Luz,Human
+  2,Eda,Witch
+"""
+
+toml_str = to_toml_from_toon(toon_str)
+print(toml_str)
+# Output:
+# [user]
+# name = "Luz Noceda"
+# age = 14
+# active = true
+# 
+# crew = [
+#     { id = 1, name = "Luz", role = "Human" },
+#     { id = 2, name = "Eda", role = "Witch" },
+# ]
+```
+
+**Stream TOML to TOON:**
+
+```python
+from toontools import stream_toml_to_toon
+
+with open("config.toml", "r") as fin, open("output.toon", "w") as fout:
+    bytes_written = stream_toml_to_toon(fin, fout, mode="auto")
+    print(f"Converted {bytes_written} bytes")
+```
+
+**Note:** Requires `pip install toontools[toml]` or `pip install tomli>=2.0 tomli-w>=1.0`
+
 ### Command-Line Interface
 
 #### Convert JSON to TOON
@@ -316,6 +413,20 @@ toonpy toon-to-yaml --in data.toon --out data.yaml
 ```
 
 **Note:** YAML commands require `pip install toontools[yaml]`
+
+#### Convert TOML to TOON
+
+```bash
+toonpy toml-to-toon --in config.toml --out config.toon --mode auto
+```
+
+#### Convert TOON to TOML
+
+```bash
+toonpy toon-to-toml --in data.toon --out data.toml
+```
+
+**Note:** TOML commands require `pip install toontools[toml]`
 
 **Exit Codes:**
 - `0` - Success

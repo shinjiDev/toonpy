@@ -1,7 +1,7 @@
 """
-toonpy – JSON/YAML ⇄ TOON conversion toolkit.
+toonpy – JSON/YAML/TOML ⇄ TOON conversion toolkit.
 
-A production-quality Python library for converting between JSON, YAML and TOON
+A production-quality Python library for converting between JSON, YAML, TOML and TOON
 (Token-Oriented Object Notation) formats, fully conforming to TOON SPEC v2.0.
 
 Main functions:
@@ -17,6 +17,12 @@ YAML support (optional, requires PyYAML):
     - stream_yaml_to_toon: Stream YAML to TOON conversion
     - HAS_YAML: Flag indicating if YAML support is available
 
+TOML support (optional, requires tomli/tomli_w):
+    - to_toml_from_toon: Convert TOON to TOML
+    - to_toon_from_toml: Convert TOML to TOON
+    - stream_toml_to_toon: Stream TOML to TOON conversion
+    - HAS_TOML: Flag indicating if TOML support is available
+
 Example:
     >>> import toonpy
     >>> data = {"name": "Luz", "active": True}
@@ -30,6 +36,7 @@ from __future__ import annotations
 
 from .api import (
     HAS_YAML,
+    HAS_TOML,
     TabularSuggestion,
     from_toon,
     stream_to_toon,
@@ -45,29 +52,40 @@ if HAS_YAML:
         to_toon_from_yaml,
         to_yaml_from_toon,
     )
-    
-    __all__ = [
-        "to_toon",
-        "from_toon",
-        "stream_to_toon",
-        "suggest_tabular",
-        "validate_toon",
-        "TabularSuggestion",
-        "HAS_YAML",
+
+# TOML support (optional)
+if HAS_TOML:
+    from .api import (
+        stream_toml_to_toon,
+        to_toon_from_toml,
+        to_toml_from_toon,
+    )
+
+# Build __all__ dynamically based on available features
+__all__ = [
+    "to_toon",
+    "from_toon",
+    "stream_to_toon",
+    "suggest_tabular",
+    "validate_toon",
+    "TabularSuggestion",
+    "HAS_YAML",
+    "HAS_TOML",
+]
+
+if HAS_YAML:
+    __all__.extend([
         "to_yaml_from_toon",
         "to_toon_from_yaml",
         "stream_yaml_to_toon",
-    ]
-else:
-    __all__ = [
-        "to_toon",
-        "from_toon",
-        "stream_to_toon",
-        "suggest_tabular",
-        "validate_toon",
-        "TabularSuggestion",
-        "HAS_YAML",
-    ]
+    ])
 
-__version__ = "0.4.0"
+if HAS_TOML:
+    __all__.extend([
+        "to_toml_from_toon",
+        "to_toon_from_toml",
+        "stream_toml_to_toon",
+    ])
+
+__version__ = "0.5.0"
 

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "toontools"
-version = "0.4.0"
-description = "Conversion utilities between JSON, YAML and TOON (Token-Oriented Object Notation)"
+version = "0.5.0"
+description = "Conversion utilities between JSON, YAML, TOML and TOON (Token-Oriented Object Notation)"
 readme = "README.md"
 authors = [
     { name = "shinjidev", email = "palomares.c@gmail.com" }
@@ -14,7 +14,7 @@ license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.9"
 dependencies = []
-keywords = ["toon", "json", "yaml", "serialization", "parser", "data-format"]
+keywords = ["toon", "json", "yaml", "toml", "serialization", "parser", "data-format"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -46,6 +46,10 @@ examples = [
 ]
 yaml = [
     "PyYAML>=6.0"
+]
+toml = [
+    "tomli>=2.0.0",
+    "tomli-w>=1.0.0"
 ]
 
 [project.scripts]
