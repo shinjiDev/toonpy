@@ -250,11 +250,8 @@ def guess_number(token: str) -> int | float | None:
         # Return int if the float is a whole number (e.g. 1e6 → 1000000)
         int_val = int(val)
         return int_val if int_val == val else val
-    # Integer path
-    try:
-        return int(token)  # int("-0") == 0 in Python, handles -0 case
-    except ValueError:
-        return None
+    # Integer path — NUMBER_RE guarantees valid syntax, int() cannot raise here
+    return int(token)  # int("-0") == 0 in Python, handles -0 case
 
 
 def split_escaped_row(line: str, separator: str = "|") -> List[str]:
@@ -336,6 +333,8 @@ def split_row_v3(row: str, separator: str) -> list[str]:
     Returns:
         List of raw cell strings (caller strips whitespace and parses tokens)
     """
+    if len(separator) != 1:
+        raise ValueError(f"separator must be a single character, got {separator!r}")
     # Fast path: no quotes — simple split is O(n) with no allocation overhead
     if '"' not in row:
         return row.split(separator)

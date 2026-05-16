@@ -13,7 +13,8 @@ DECODE = [
 ENCODE = [
     "primitives", "objects", "arrays-primitive", "arrays-tabular",
     "arrays-nested", "arrays-objects", "delimiters", "whitespace",
-    "options", "key-folding",
+    # "options" does not exist in the spec repo (404) — excluded
+    "key-folding",
 ]
 
 def download_all():
@@ -30,8 +31,9 @@ def download_all():
                     data = json.loads(resp.read())
                 dest.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding='utf-8')
                 print(f"  -> {dest} ({len(data['tests'])} tests)")
-            except urllib.error.HTTPError as e:
-                print(f"  ! Skipped (HTTP {e.code})")
+            except urllib.error.URLError as e:
+                reason = e.code if isinstance(e, urllib.error.HTTPError) else e.reason
+                print(f"  ! Skipped ({reason})")
 
 if __name__ == "__main__":
     download_all()
