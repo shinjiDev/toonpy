@@ -229,6 +229,10 @@ def guess_number(token: str) -> int | float | None:
     - Exponent notation (e.g. '1e6', '-1E+03') → evaluated, int if whole
     - -0 and -0.0 → 0
     - Returns int for whole numbers, float otherwise
+
+    Note: exponent forms are converted via float() first, so integers larger
+    than 2^53 may lose precision (e.g. 9007199254740993e0 → 9007199254740992).
+    The TOON spec does not require lossless large-integer exponent support.
     """
     if not token:
         return None
