@@ -29,39 +29,33 @@ DECODE_FIXTURES = [
 ENCODE_FIXTURES = [
     "primitives", "objects", "arrays-primitive", "arrays-tabular",
     "arrays-nested", "arrays-objects", "delimiters", "whitespace",
+    # "options" does not exist in the spec repo (404) — intentionally excluded
     "key-folding",
 ]
 
 
-def _load_fixture(category: str, name: str) -> list[dict]:
-    path = FIXTURES_DIR / category / f"{name}.json"
-    if not path.exists():
-        pytest.skip(f"Fixture not found: {path} — run tests/fixtures/download_fixtures.py")
-    return json.loads(path.read_text(encoding="utf-8"))["tests"]
+def _load_params(category: str, names: list[str]) -> list[tuple[str, dict]]:
+    """Build parametrize list from cached fixture files (skips missing files)."""
+    params = []
+    for name in names:
+        path = FIXTURES_DIR / category / f"{name}.json"
+        if not path.exists():
+            continue
+        try:
+            cases = json.loads(path.read_text(encoding="utf-8"))["tests"]
+        except Exception:
+            continue
+        for case in cases:
+            params.append((f"{name}::{case['name']}", case))
+    return params
 
 
 def _decode_params() -> list[tuple[str, dict]]:
-    params = []
-    for name in DECODE_FIXTURES:
-        try:
-            cases = _load_fixture("decode", name)
-        except Exception:
-            continue
-        for case in cases:
-            params.append((f"{name}::{case['name']}", case))
-    return params
+    return _load_params("decode", DECODE_FIXTURES)
 
 
 def _encode_params() -> list[tuple[str, dict]]:
-    params = []
-    for name in ENCODE_FIXTURES:
-        try:
-            cases = _load_fixture("encode", name)
-        except Exception:
-            continue
-        for case in cases:
-            params.append((f"{name}::{case['name']}", case))
-    return params
+    return _load_params("encode", ENCODE_FIXTURES)
 
 
 def _options_to_kwargs(options: dict) -> dict[str, Any]:
@@ -88,7 +82,7 @@ def test_decode_fixture(name: str, case: dict) -> None:
     should_error: bool = case.get("shouldError", False)
 
     if should_error:
-        with pytest.raises((ToonSyntaxError, Exception)):
+        with pytest.raises(ToonSyntaxError):
             from_toon(source, **options)
         return
 
@@ -106,7 +100,7 @@ def test_encode_fixture(name: str, case: dict) -> None:
     expected: str = case.get("expected", "")
 
     if should_error:
-        with pytest.raises(Exception):
+        with pytest.raises((ToonSyntaxError, ValueError)):
             to_toon(obj, **options)
         return
 
