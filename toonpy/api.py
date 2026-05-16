@@ -97,31 +97,51 @@ def to_toon(obj: Any, *, indent: int = 2, mode: Literal["auto", "compact", "read
     return _to_toon(obj, indent=indent, mode=mode)
 
 
-def from_toon(source: str, *, mode: Literal["strict", "permissive"] = "strict") -> Any:
-    """Parse a TOON string into a Python object.
-    
+def from_toon(
+    source: str,
+    *,
+    mode: Literal["strict", "permissive"] = "strict",
+    strict: bool | None = None,
+    indent: int = 2,
+    expand_paths: str = "off",
+) -> Any:
+    """Parse a TOON v3 string into a Python object.
+
     Converts a TOON-formatted string into a Python object (dict, list, scalar)
-    according to TOON SPEC v2.0.
-    
+    according to TOON SPEC v3.0.
+
     Args:
         source: TOON-formatted string to parse
-        mode: Parsing mode:
-            - "strict": Enforce strict TOON grammar compliance
-            - "permissive": Allow minor deviations (e.g., trailing commas)
-            
+        mode: Parsing mode (legacy): "strict" or "permissive"
+        strict: If provided, overrides mode. False = permissive parsing.
+        indent: Number of spaces per indentation level (default: 2)
+        expand_paths: Path expansion mode: "off", "safe", or "all"
+
     Returns:
         Python object (dict, list, or scalar value)
-        
+
     Raises:
         ToonSyntaxError: If the TOON string is malformed
-        
+
     Example:
         >>> toon = 'name: "Luz"\\nactive: true'
         >>> data = from_toon(toon)
         >>> data == {"name": "Luz", "active": True}
         True
     """
-    return _from_toon(source, permissive=(mode == "permissive"))
+    if strict is not None:
+        _strict = strict
+        _permissive = not strict
+    else:
+        _strict = (mode == "strict")
+        _permissive = (mode == "permissive")
+    return _from_toon(
+        source,
+        strict=_strict,
+        permissive=_permissive,
+        indent=indent,
+        expand_paths=expand_paths,
+    )
 
 
 def stream_to_toon(
@@ -238,7 +258,7 @@ def validate_toon(source: str, *, strict: bool = True) -> tuple[bool, List[Valid
         True
     """
     try:
-        _from_toon(source, permissive=not strict)
+        _from_toon(source, strict=strict, permissive=not strict)
     except ToonSyntaxError as exc:
         return False, [ValidationError(str(exc), exc.line, exc.column)]
     return True, []
