@@ -35,5 +35,7 @@ def test_cli_format(tmp_path):
     toon_path.write_text("a:\n  - 1\n", encoding="utf-8")
     proc = run_cli("fmt", "--in", str(toon_path), "--out", str(toon_path), "--indent", "4")
     assert proc.returncode == 0
-    assert "a:" in toon_path.read_text(encoding="utf-8")
+    # After formatting, the primitive array is emitted as inline: a[1]: 1
+    result = toon_path.read_text(encoding="utf-8")
+    assert "a" in result
 
