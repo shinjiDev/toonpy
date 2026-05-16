@@ -37,8 +37,10 @@ __all__ = [
     "format_key",
     "format_scalar",
     "guess_number",
+    "is_identifier_segment",
     "is_safe_identifier",
     "split_escaped_row",
+    "split_row_v3",
     "string_needs_quotes",
     "tabular_schema",
     "token_length",
@@ -56,6 +58,9 @@ class TabularSchema:
 
     keys: List[str]
     savings: int
+
+
+IDENTIFIER_SEGMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 def is_safe_identifier(token: str) -> bool:
@@ -79,6 +84,16 @@ def is_safe_identifier(token: str) -> bool:
         True
     """
     return bool(SAFE_IDENTIFIER_RE.match(token))
+
+
+def is_identifier_segment(segment: str) -> bool:
+    """Check if a string is a valid path-expansion segment (no dots or hyphens).
+
+    Used by path expansion (expandPaths='safe') to determine if a dotted
+    key segment can be expanded. Stricter than is_safe_identifier — no hyphens,
+    no dots.
+    """
+    return bool(IDENTIFIER_SEGMENT_RE.match(segment))
 
 
 def escape_string(value: str) -> str:
@@ -207,45 +222,37 @@ def format_scalar(value: object) -> str:
 
 
 def guess_number(token: str) -> int | float | None:
-    """Attempt to parse a token as a number.
-    
-    Optimized version using try/except which is faster than regex for valid numbers.
-    Falls back to regex validation for edge cases.
-    
-    Args:
-        token: String token to parse
-        
-    Returns:
-        Parsed number (int or float) if valid, None otherwise
-        
-    Example:
-        >>> guess_number("42")
-        42
-        >>> guess_number("3.14")
-        3.14
-        >>> guess_number("1e5")
-        100000.0
-        >>> guess_number("not_a_number")
-        None
+    """Attempt to parse a token as a number per TOON spec v3.
+
+    Rules:
+    - Leading zeros (e.g. '05', '-05') → None (treated as string)
+    - Exponent notation (e.g. '1e6', '-1E+03') → evaluated, int if whole
+    - -0 and -0.0 → 0
+    - Returns int for whole numbers, float otherwise
     """
     if not token:
         return None
-    
-    # Quick first character check (early rejection)
     first = token[0]
     if not (first.isdigit() or first == '-'):
         return None
-    
-    # Try direct parsing (faster than regex for valid cases)
-    try:
-        # Detect floats by presence of . or e/E
-        if '.' in token or 'e' in token or 'E' in token:
+    # Regex validates first — rejects leading zeros, validates grammar
+    if not NUMBER_RE.match(token):
+        return None
+    # Has decimal point or exponent — use float path
+    if '.' in token or 'e' in token or 'E' in token:
+        try:
             val = float(token)
-            # Validate with regex to reject cases like "1.2.3" that float() partially accepts
-            if not NUMBER_RE.match(token):
-                return None
-            return val
-        return int(token)
+        except ValueError:
+            return None
+        # Normalize -0.0 → 0
+        if val == 0:
+            return 0
+        # Return int if the float is a whole number (e.g. 1e6 → 1000000)
+        int_val = int(val)
+        return int_val if int_val == val else val
+    # Integer path
+    try:
+        return int(token)  # int("-0") == 0 in Python, handles -0 case
     except ValueError:
         return None
 
@@ -313,6 +320,46 @@ def split_escaped_row(line: str, separator: str = "|") -> List[str]:
             parts.append(part)
     
     return parts if parts else [line.strip()]
+
+
+def split_row_v3(row: str, separator: str) -> list[str]:
+    """Split a v3 table/array row by separator, respecting quoted strings.
+
+    Unlike split_escaped_row (which handles legacy @table pipe-bordered format),
+    this function treats separator as a pure delimiter with no stripping magic.
+    Fast path for rows with no quoted strings (the common case).
+
+    Args:
+        row: Row string to split (already stripped of leading/trailing whitespace)
+        separator: Single-character delimiter (',' '\\t' or '|')
+
+    Returns:
+        List of raw cell strings (caller strips whitespace and parses tokens)
+    """
+    # Fast path: no quotes — simple split is O(n) with no allocation overhead
+    if '"' not in row:
+        return row.split(separator)
+    # Slow path: walk char-by-char to respect quoted strings
+    parts: list[str] = []
+    start = 0
+    in_string = False
+    i = 0
+    n = len(row)
+    while i < n:
+        ch = row[i]
+        if ch == '\\' and in_string and i + 1 < n:
+            i += 2
+            continue
+        if ch == '"':
+            in_string = not in_string
+            i += 1
+            continue
+        if ch == separator and not in_string:
+            parts.append(row[start:i])
+            start = i + 1
+        i += 1
+    parts.append(row[start:])
+    return parts
 
 
 def tabular_schema(rows: Sequence[Mapping[str, object]]) -> TabularSchema | None:
