@@ -71,74 +71,70 @@ class TabularSuggestion:
     keys: List[str]
 
 
-def to_toon(obj: Any, *, indent: int = 2, mode: Literal["auto", "compact", "readable"] = "auto") -> str:
+def to_toon(
+    obj: Any,
+    *,
+    indent: int = 2,
+    mode: Literal["auto", "compact", "readable"] = "auto",
+    delimiter: Literal["comma", "tab", "pipe"] = "comma",
+    key_folding: Literal["off", "safe"] = "off",
+    flatten_depth: int | float = float("inf"),
+) -> str:
     """Convert a Python object to TOON format string.
-    
-    Converts any JSON-compatible Python object (dict, list, scalar) into
-    a TOON-formatted string according to TOON SPEC v2.0.
-    
+
     Args:
         obj: Python object compatible with JSON model (dict, list, scalar)
-        indent: Number of spaces per indentation level (default: 2)
-        mode: Serialization mode:
-            - "auto": Automatically choose compact or readable based on content
-            - "compact": Minimize output size
-            - "readable": Prefer human-readable formatting
-            
+        indent: Spaces per indentation level (default: 2)
+        mode: "auto" (default), "compact", or "readable"
+        delimiter: "comma" (default), "tab", or "pipe"
+        key_folding: "off" (default) or "safe" — fold single-key chains to dotted paths
+        flatten_depth: Max depth for key folding (default: inf)
+
     Returns:
         TOON-formatted string
-        
-    Example:
-        >>> data = {"crew": [{"id": 1, "name": "Luz"}]}
-        >>> toon = to_toon(data, mode="auto")
-        >>> "crew[1]{id,name}:" in toon
-        True
     """
-    return _to_toon(obj, indent=indent, mode=mode)
+    return _to_toon(
+        obj,
+        indent=indent,
+        mode=mode,
+        delimiter=delimiter,
+        key_folding=key_folding,
+        flatten_depth=flatten_depth,
+    )
 
 
 def from_toon(
     source: str,
     *,
-    mode: Literal["strict", "permissive"] = "strict",
-    strict: bool | None = None,
+    strict: bool = True,
+    expand_paths: Literal["off", "safe"] = "off",
+    spec: Literal["v2", "v3"] = "v3",
+    permissive: bool = False,
     indent: int = 2,
-    expand_paths: str = "off",
 ) -> Any:
-    """Parse a TOON v3 string into a Python object.
-
-    Converts a TOON-formatted string into a Python object (dict, list, scalar)
-    according to TOON SPEC v3.0.
+    """Parse a TOON string into a Python object.
 
     Args:
         source: TOON-formatted string to parse
-        mode: Parsing mode (legacy): "strict" or "permissive"
-        strict: If provided, overrides mode. False = permissive parsing.
-        indent: Number of spaces per indentation level (default: 2)
-        expand_paths: Path expansion mode: "off", "safe", or "all"
+        strict: Enforce strict v3 validation (default: True)
+        expand_paths: "off" (default) or "safe" — expand dotted keys
+        spec: "v3" (default) or "v2" — which spec version to use
+        permissive: Relax identifier/numeric validation (v2 compat)
+        indent: Expected indentation size for strict validation (default: 2)
 
     Returns:
         Python object (dict, list, or scalar value)
 
     Raises:
         ToonSyntaxError: If the TOON string is malformed
-
-    Example:
-        >>> toon = 'name: "Luz"\\nactive: true'
-        >>> data = from_toon(toon)
-        >>> data == {"name": "Luz", "active": True}
-        True
     """
-    if strict is not None:
-        _strict = strict
-        _permissive = not strict
-    else:
-        _strict = (mode == "strict")
-        _permissive = (mode == "permissive")
+    if spec == "v2":
+        from ._parser_v2 import from_toon as _from_toon_v2
+        return _from_toon_v2(source, permissive=permissive)
     return _from_toon(
         source,
-        strict=_strict,
-        permissive=_permissive,
+        strict=strict,
+        permissive=permissive,
         indent=indent,
         expand_paths=expand_paths,
     )
@@ -258,7 +254,7 @@ def validate_toon(source: str, *, strict: bool = True) -> tuple[bool, List[Valid
         True
     """
     try:
-        _from_toon(source, strict=strict, permissive=not strict)
+        _from_toon(source, strict=strict)
     except ToonSyntaxError as exc:
         return False, [ValidationError(str(exc), exc.line, exc.column)]
     return True, []
@@ -300,7 +296,7 @@ def to_yaml_from_toon(source: str, *, mode: Literal["strict", "permissive"] = "s
             "PyYAML is required for YAML support. "
             "Install it with: pip install toontools[yaml]"
         )
-    data = from_toon(source, mode=mode)
+    data = from_toon(source, strict=(mode == "strict"), permissive=(mode == "permissive"))
     return yaml.dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
 

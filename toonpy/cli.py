@@ -128,7 +128,7 @@ def cmd_from(args: argparse.Namespace) -> int:
         OSError: If file I/O fails
     """
     text = Path(args.input_path).read_text(encoding="utf-8")
-    data = from_toon(text, mode="permissive" if args.permissive else "strict")
+    data = from_toon(text, permissive=args.permissive, strict=not args.permissive)
     Path(args.output_path).write_text(json.dumps(data, indent=2), encoding="utf-8")
     return 0
 
