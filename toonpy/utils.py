@@ -14,6 +14,13 @@ import re
 from typing import List, Mapping, Sequence
 
 SAFE_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_\-]*$")
+
+# Strings that TOON parses as non-string literals — must be quoted when serializing Python strings
+_TOON_RESERVED = frozenset({"true", "false", "null"})
+
+# v3 value: always quote if these control/structural chars are present
+_VALUE_UNSAFE_RE = re.compile(r'[\n\t\r:"\'`\[\]{}\\]')
+
 NUMBER_RE = re.compile(r"""
     ^
     -?
@@ -61,6 +68,30 @@ class TabularSchema:
 
 
 IDENTIFIER_SEGMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _value_needs_quotes(value: str) -> bool:
+    """Return True if a string value must be quoted in TOON v3.
+
+    Allows unicode non-whitespace characters unquoted.
+    Quotes reserved literals (true/false/null) and number-like strings.
+    """
+    if not value:
+        return True
+    if value in _TOON_RESERVED:
+        return True
+    if value[0] == ' ' or value[-1] == ' ':
+        return True
+    if _VALUE_UNSAFE_RE.search(value):
+        return True
+    # Quote if it starts with a digit, minus, or quote (number-like or string-literal-like)
+    first = value[0]
+    if first == '"' or first == "'":
+        return True
+    if first.isdigit() or first == '-':
+        # Would be parsed as a number — quote to preserve as string
+        return True
+    return False
 
 
 def is_safe_identifier(token: str) -> bool:
@@ -148,25 +179,27 @@ def string_needs_quotes(value: str) -> bool:
 
 def format_key(key: str) -> str:
     """Format a dictionary key for TOON output.
-    
-    Returns the key as-is if it's a safe identifier, otherwise returns
-    it as a JSON-quoted string.
-    
+
+    Unquoted keys in TOON v3 must be plain identifier segments: [A-Za-z_][A-Za-z0-9_]*
+    (no hyphens, no dots). Everything else is JSON-quoted.
+
     Args:
         key: Dictionary key to format
-        
+
     Returns:
-        Formatted key (unquoted if safe, quoted otherwise)
-        
+        Formatted key (unquoted if safe identifier, quoted otherwise)
+
     Example:
         >>> format_key("name")
         'name'
         >>> format_key("my key")
         '"my key"'
+        >>> format_key("my-key")
+        '"my-key"'
     """
-    if string_needs_quotes(key):
-        return json.dumps(key)
-    return key
+    if is_identifier_segment(key):
+        return key
+    return json.dumps(key)
 
 
 def format_scalar(value: object) -> str:
@@ -211,7 +244,7 @@ def format_scalar(value: object) -> str:
         if "\n" in value:
             escaped = escape_string(value)
             return f'"""{escaped}"""'
-        if string_needs_quotes(value):
+        if _value_needs_quotes(value):
             return f"\"{escape_string(value)}\""
         return value
     if isinstance(value, Mapping):
@@ -395,13 +428,17 @@ def tabular_schema(rows: Sequence[Mapping[str, object]]) -> TabularSchema | None
     keys = list(rows[0].keys())
     if not keys:
         return None
+    key_set = set(keys)
     for row in rows[1:]:
-        if list(row.keys()) != keys:
+        if set(row.keys()) != key_set:
             return None
-    linear = json.dumps(rows, separators=(",", ":"))
-    table_rows = len(rows) + 1
-    approx_table_len = sum(len(k) + 2 for k in keys) + table_rows * sum(len(str(v)) + 2 for v in rows[0].values())
-    savings = len(linear) - approx_table_len
+    # Estimate savings without json.dumps: tabular saves key repetition across rows.
+    # Linear JSON per row: {"k1":v1,"k2":v2,...} ≈ 2 + sum(len(k)+3+len(str(v)))
+    # Tabular per row: v1,v2,... ≈ sum(len(str(v))+1)
+    # Header (once): k1,k2,... ≈ sum(len(k)+1)
+    n = len(rows)
+    key_char_savings = sum(len(k) + 3 for k in keys)  # "k": per field saved per row
+    savings = key_char_savings * (n - 1) - sum(len(k) + 1 for k in keys)
     return TabularSchema(keys=keys, savings=savings)
 
 

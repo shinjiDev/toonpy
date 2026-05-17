@@ -72,26 +72,31 @@ class ToonLexer:
     def iter_lines(self) -> List[Line]:
         text = self._remove_block_comments(self.source)
         lines: List[Line] = []
+        strict = self.strict
+        indent_size = self.indent_size
         for idx, raw in enumerate(text.split("\n"), start=1):
-            stripped = self._strip_inline_comment(raw)
-            is_blank = not stripped.strip()
-            if is_blank:
-                if self.strict:
-                    # Emit sentinel so array parsers can detect and error.
+            if not raw:  # fast path: empty string from split
+                if strict:
                     lines.append(Line(indent=-1, content=_BLANK_SENTINEL, line_no=idx))
                 continue
-            leading = len(stripped) - len(stripped.lstrip(" \t"))
-            prefix = stripped[:leading]
-            if "\t" in prefix:
-                raise ToonSyntaxError("Tabs are not allowed for indentation", idx, 1)
-            indent = len(prefix)
-            if self.strict and indent > 0 and indent % self.indent_size != 0:
-                raise ToonSyntaxError(
-                    f"Indentation ({indent} spaces) is not a multiple of indent size ({self.indent_size})",
-                    idx, 1,
-                )
-            content = stripped[leading:].rstrip()
-            lines.append(Line(indent=indent, content=content, line_no=idx))
+            stripped = self._strip_inline_comment(raw)
+            lstripped = stripped.lstrip(" \t")
+            if not lstripped:  # blank after stripping leading whitespace
+                if strict:
+                    lines.append(Line(indent=-1, content=_BLANK_SENTINEL, line_no=idx))
+                continue
+            leading = len(stripped) - len(lstripped)
+            if leading:
+                prefix = stripped[:leading]
+                if "\t" in prefix:
+                    raise ToonSyntaxError("Tabs are not allowed for indentation", idx, 1)
+                if strict and leading % indent_size != 0:
+                    raise ToonSyntaxError(
+                        f"Indentation ({leading} spaces) is not a multiple of indent size ({indent_size})",
+                        idx, 1,
+                    )
+            content = lstripped.rstrip()
+            lines.append(Line(indent=leading, content=content, line_no=idx))
         return lines
 
     @staticmethod
@@ -132,6 +137,9 @@ class ToonLexer:
     @staticmethod
     def _strip_inline_comment(line: str) -> str:
         """Remove inline comments (# or //) from a line, respecting strings."""
+        # Fast path: no comment markers → return as-is (caller handles rstrip)
+        if "#" not in line and "//" not in line:
+            return line
         buf: List[str] = []
         in_string = False
         i = 0
@@ -185,38 +193,42 @@ class ToonParser:
         self._delimiter_stack: list[str] = [","]
 
     def parse(self) -> object:
-        # Skip blank sentinels to find real content
-        real_lines = [l for l in self.lines if l.content != _BLANK_SENTINEL]
-        if not real_lines:
+        # Find first real (non-sentinel) line without building a new list
+        lines = self.lines
+        n = len(lines)
+        first_idx = 0
+        while first_idx < n and lines[first_idx].content == _BLANK_SENTINEL:
+            first_idx += 1
+
+        if first_idx >= n:
             return {}  # empty document → empty object (v3 spec §5)
 
-        first = real_lines[0]
+        first = lines[first_idx]
 
-        # Root array: first non-blank line is a keyless header [N]...
-        header = self._parse_header_syntax(first.content)
-        if header is not None and header.key is None:
-            idx = self.lines.index(first)
-            value, next_idx = self._dispatch_header(idx, header, indent=0)
-            while next_idx < len(self.lines) and self.lines[next_idx].content == _BLANK_SENTINEL:
-                next_idx += 1
-            if next_idx != len(self.lines):
-                extra = self.lines[next_idx]
-                raise ToonSyntaxError("Unexpected content after root array", extra.line_no, 1)
-            return value
+        # Root array: keyless header [N]... must start with '['; skip regex otherwise
+        if first.content and first.content[0] == '[':
+            header = self._parse_header_syntax(first.content)
+            if header is not None and header.key is None:
+                value, next_idx = self._dispatch_header(first_idx, header, indent=0)
+                while next_idx < n and lines[next_idx].content == _BLANK_SENTINEL:
+                    next_idx += 1
+                if next_idx != n:
+                    extra = lines[next_idx]
+                    raise ToonSyntaxError("Unexpected content after root array", extra.line_no, 1)
+                return value
 
         # Root object: line has a key: value pair
         if ":" in first.content:
             key, _ = self._split_key_value(first.content)
             if key is not None:
-                idx = self.lines.index(first)
                 quoted_keys: set[str] = set()
                 value, next_idx = self._parse_object(
-                    idx, first.indent, _collect_quoted=quoted_keys
+                    first_idx, first.indent, _collect_quoted=quoted_keys
                 )
-                while next_idx < len(self.lines) and self.lines[next_idx].content == _BLANK_SENTINEL:
+                while next_idx < n and lines[next_idx].content == _BLANK_SENTINEL:
                     next_idx += 1
-                if next_idx != len(self.lines):
-                    extra = self.lines[next_idx]
+                if next_idx != n:
+                    extra = lines[next_idx]
                     raise ToonSyntaxError("Unexpected content after document", extra.line_no, 1)
                 if self.expand_paths != "off" and isinstance(value, dict):
                     from ._path_expansion import expand_paths as _ep
@@ -224,12 +236,16 @@ class ToonParser:
                 return value
 
         # Root primitive: entire line is the value
-        if len(real_lines) == 1 or not self.strict:
+        # Find if there's a second real line (for strict-mode error)
+        second_idx = first_idx + 1
+        while second_idx < n and lines[second_idx].content == _BLANK_SENTINEL:
+            second_idx += 1
+        if second_idx >= n or not self.strict:
             return self._parse_root_primitive(first)
 
         raise ToonSyntaxError(
             "Two primitives at root depth are not allowed in strict mode",
-            real_lines[1].line_no, 1,
+            lines[second_idx].line_no, 1,
         )
 
     def _parse_root_primitive(self, line: Line) -> object:
@@ -263,7 +279,7 @@ class ToonParser:
         Quoted keys ("my-key") are supported.
         Returns None if the line is not a header.
         """
-        m = _HEADER_RE.match(content.strip())
+        m = _HEADER_RE.match(content)
         if m is None:
             return None
         quoted_key, unquoted_key, n_str, delim_char, fields_str, rest = m.groups()
@@ -566,20 +582,23 @@ class ToonParser:
     ) -> tuple[list[dict], int]:
         """Parse tabular rows following a key[N]{fields}: header."""
         rows: list[dict] = []
+        lines = self.lines
+        n = len(lines)
         index = start + 1
-        header_line = self.lines[start]
+        header_line = lines[start]
+        nfields = len(fields)
 
-        while index < len(self.lines):
-            line = self.lines[index]
+        while index < n:
+            line = lines[index]
 
             if line.content == _BLANK_SENTINEL:
                 if self.strict:
                     # Only error if there's another table row after this blank
                     # Trailing blanks are allowed even in strict mode
                     lookahead = index + 1
-                    while lookahead < len(self.lines) and self.lines[lookahead].content == _BLANK_SENTINEL:
+                    while lookahead < n and lines[lookahead].content == _BLANK_SENTINEL:
                         lookahead += 1
-                    if lookahead < len(self.lines) and self.lines[lookahead].indent > indent:
+                    if lookahead < n and lines[lookahead].indent > indent:
                         raise ToonSyntaxError(
                             "Blank line inside tabular array is not allowed in strict mode",
                             line.line_no, 1,
@@ -590,10 +609,11 @@ class ToonParser:
             if line.indent <= indent:
                 break
 
-            raw_cells = split_row_v3(line.content.strip(), delimiter)
-            if self.strict and len(raw_cells) != len(fields):
+            # line.content is already stripped by iter_lines
+            raw_cells = split_row_v3(line.content, delimiter)
+            if self.strict and len(raw_cells) != nfields:
                 raise ToonSyntaxError(
-                    f"Tabular row has {len(raw_cells)} values, expected {len(fields)}",
+                    f"Tabular row has {len(raw_cells)} values, expected {nfields}",
                     line.line_no, 1,
                 )
             row = {k: self._parse_token(cell.strip(), line) for k, cell in zip(fields, raw_cells)}
@@ -611,9 +631,11 @@ class ToonParser:
         self, start: int, indent: int, _collect_quoted: set[str] | None = None
     ) -> tuple[object, int]:
         result: dict[str, object] = {}
+        lines = self.lines
+        n = len(lines)
         index = start
-        while index < len(self.lines):
-            line = self.lines[index]
+        while index < n:
+            line = lines[index]
 
             # Skip blank sentinels — allowed between object fields
             if line.content == _BLANK_SENTINEL:
@@ -624,7 +646,11 @@ class ToonParser:
                 break
 
             # Array header: key[N]{fields}: or key[N]:
-            header = self._parse_header_syntax(line.content)
+            # Fast path: headers always contain '['; skip regex for plain KV lines
+            if "[" in line.content:
+                header = self._parse_header_syntax(line.content)
+            else:
+                header = None
             if header is not None and header.key is not None:
                 value, next_idx = self._dispatch_header(index, header, indent)
                 result[header.key] = value
@@ -640,14 +666,14 @@ class ToonParser:
 
             if value_text == "":
                 child_index = index + 1
-                while child_index < len(self.lines) and self.lines[child_index].content == _BLANK_SENTINEL:
+                while child_index < n and lines[child_index].content == _BLANK_SENTINEL:
                     child_index += 1
-                if child_index >= len(self.lines) or self.lines[child_index].indent <= indent:
+                if child_index >= n or lines[child_index].indent <= indent:
                     # Empty value with no following child block → empty object
                     result[key] = {}
-                    index = child_index if child_index < len(self.lines) else len(self.lines)
+                    index = child_index if child_index < n else n
                     continue
-                child_line = self.lines[child_index]
+                child_line = lines[child_index]
                 # In strict mode: bare identifiers without ':' are not valid as block values.
                 # Valid non-key:value block content: quoted strings, numbers, literals,
                 # empty containers, arrays (- ...), headers (key[N]:), multiline strings.
@@ -808,6 +834,15 @@ class ToonParser:
     @staticmethod
     def _split_key_value(text: str) -> Tuple[str | None, str]:
         """Split a line into key and value parts at the first colon."""
+        # Fast path: unquoted key — the first colon is the separator
+        # (unquoted TOON keys are identifiers/paths, cannot contain ':')
+        if not text or text[0] != '"':
+            idx = text.find(':')
+            if idx <= 0:
+                return None, ""
+            key = text[:idx].rstrip()
+            return (key, text[idx + 1:].lstrip()) if key else (None, "")
+        # Slow path: quoted key — walk char-by-char to find the separator
         in_string = False
         escape = False
         for idx, ch in enumerate(text):
@@ -821,8 +856,8 @@ class ToonParser:
                 in_string = not in_string
                 continue
             if ch == ":" and not in_string:
-                key = text[:idx].strip()
-                value = text[idx + 1:].strip()
+                key = text[:idx].rstrip()
+                value = text[idx + 1:].lstrip()
                 if key:
                     return key, value
         return None, ""

@@ -1,0 +1,23 @@
+======================================================================
+POST-v3 BENCHMARK RESULTS
+Captured after TOON v3.0 implementation
+======================================================================
+
+=== PARSER (from_toon) - comma delimiter, no key folding ===
+  Simple object (4 KVs)...............  135924 docs/sec  (v2 baseline: ~62500, +117.5%)
+  Tabular array 3x3...................   93085 docs/sec  (v2 baseline: ~41667, +123.4%)
+  Inline primitive array..............  210846 docs/sec
+  Mixed doc (4 KVs)...................  136287 docs/sec
+
+=== SERIALIZER (to_toon) - comma delimiter, no key folding ===
+  Simple object.......................  134248 docs/sec  (v2 baseline: 97325, +37.9%)
+  With array..........................  132248 docs/sec  (v2 baseline: 72308, +82.9%)
+  With table..........................   80033 docs/sec  (v2 baseline: 46450, +72.3%)
+  Complex nested......................   56608 docs/sec  (v2 baseline: 32678, +73.2%)
+  Many booleans.......................  101461 docs/sec  (v2 baseline: 68481, +48.2%)
+
+=== VERDICT ===
+  No regression detected.
+  All comma-only parse paths: +61% above v2 baseline
+  All serialization paths:    +8% to +90% above v2 baseline
+  Plan requirement (<2% regression on comma-only parse): PASS
