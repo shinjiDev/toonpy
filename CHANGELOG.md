@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-05-17
+
+### Added
+- **TOON spec v3.0 full support** — v3 is now the default parser
+- Multiple delimiters: tab (`\t`) and pipe (`|`) in addition to comma, configurable via `from_toon(delimiter=...)` / `to_toon(delimiter=...)`
+- Primitive inline arrays: `key[N]: v1,v2,v3` format
+- Root form disambiguation: root arrays (`[N]:`), root objects, and root primitives all correctly parsed
+- Blank-line sentinels in strict mode
+- Key folding in serializer: `to_toon(key_folding="safe", flatten_depth=N)` collapses single-key chains into dotted paths
+- Path expansion in parser: `from_toon(expand_paths="safe"|"lax")` expands dotted keys into nested objects
+- `spec="v2"` backward-compat option in `from_toon()` and `to_toon()` to opt in to v2 parsing
+- Official spec fixture test suite: all fixtures from `toon-format/spec` pass (358/358)
+
+### Changed
+- `@table` format removed from v3 parser (use `key[N]{fields}:` instead)
+- `guess_number` now handles exponent notation (`1e6`), `-0` normalization, and leading-zero → string coercion
+- `format_key` now follows v3 key rules (no hyphens in unquoted keys)
+- `tabular_schema` detection uses key-set comparison (order-independent)
+- Parser performance improved +117% on simple objects, +123% on tabular arrays vs v2 baseline
+
+### Fixed
+- Strings containing `:`, `\t`, or `\r` are now correctly quoted in serializer output
+- Hyphenated keys (`my-key`) now always quoted in serializer output
+- Delimiter characters and spaces properly escaped in cell and value contexts
+
 ## [0.3.0] - 2025-11-25
 
 ### Added

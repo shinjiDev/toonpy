@@ -1,25 +1,42 @@
-# Assumptions & Modes
+# Assumptions & Local Decisions
 
-While TOON SPEC v2.0 defines the wire format precisely, a few behaviors remain implementation-defined. `toonpy` documents its choices here and exposes **strict** and **permissive** parsing modes to accommodate legacy data.
+`toonpy` implements TOON spec v3.0. This document records implementation-defined choices and exposes **strict** and **permissive** parsing modes for edge cases.
 
-## Key Items
+## Parsing Modes
+
+- `from_toon(..., strict=True)` (default) — enforces all v3 invariants.
+- `from_toon(..., strict=False)` / `permissive=True` — relaxes certain checks (see table below).
+- `from_toon(..., spec="v2")` — routes to `toonpy._parser_v2` (the pre-v3 parser copy) for backward compatibility.
+
+## Key Decisions
 
 | Area | Strict Behavior | Permissive Behavior | Rationale |
 | ---- | ----------------| ------------------- | ----------|
-| Identifier keys | Must match `[A-Za-z_][A-Za-z0-9_-]*` or be quoted | Any UTF-8 string accepted | Stops accidental colon usage from silently producing malformed structures |
-| Numbers | Must follow JSON number grammar | Fallback to string tokens | Allows legacy hex/leading-zero numbers |
-| Table rows | Exact column count required | Extra columns ignored | Simplifies ingestion of hand-authored tables |
-| Mixed indentation | Error on tabs or inconsistent dedent | Tabs converted to 4 spaces | Aligns with historical editor behavior |
+| Unquoted key format | Identifiers: `[A-Za-z_][A-Za-z0-9_]*` (no hyphens). Dotted paths allowed. | Same — no relaxation for keys | v3 spec removes hyphens from unquoted keys |
+| Unquoted string with spaces | Error: `_parse_token` rejects tokens with spaces outside root context | Allowed | Root primitives always allow spaces |
+| Table row count | Error if row count ≠ declared N | Rows may be fewer or more | Strict validates declared length |
+| Blank lines in structures | Error in strict mode | Silently skipped | v3 spec §blank-lines |
+| Delimiter mismatch | Error if `{fields}` delimiter ≠ bracket delimiter | Ignored | Catches authoring mistakes |
+| Numbers | JSON number grammar; leading zeros → string; `-0` → 0 | Same | Follows spec exactly |
+
+## Path Expansion
+
+`from_toon(expand_paths="safe"|"lax")` post-processes dotted keys into nested objects.
+
+- `"safe"`: only expands keys where all segments are plain identifiers (no digits, hyphens, or quoted parts). Conflicts raise `ToonSyntaxError`.
+- `"lax"`: expands all dotted keys. Later keys win on conflict (last-write-wins).
+- `"off"` (default): no expansion; dotted keys are stored verbatim.
+
+Quoted keys (e.g. `"a.b": value`) are never expanded regardless of mode.
 
 ## Multiline Strings
 
-The upstream spec allows triple-quoted multiline strings. `toonpy` requires the opening line to end with `"""` and the closing sentinel to appear alone (ignoring whitespace). Content is captured verbatim with newline preservation.
+The opening line ends with `"""` and the closing `"""` must appear on its own line. Content is captured verbatim with newline preservation.
 
-## Mode Selection
+## Tabular Format Selection (Serializer)
 
-- `from_toon(..., mode="strict")` (default) enforces all invariants.
-- `from_toon(..., mode="permissive")` toggles the relaxed settings above.
-- `validate_toon(source, strict=...)` exposes the same behavior for tooling.
+In `mode="auto"` (default), the serializer chooses tabular format when the estimated character savings are positive — i.e., when key repetition savings across rows outweigh the header overhead. With only 1 row, tabular is rarely worth it; with 3+ rows it almost always is.
 
-If the official specification clarifies any of the above in future revisions, this document should be updated and strict mode tightened accordingly.
+## `@table` format
 
+The legacy `@table` pipe-bordered format from v2 is NOT supported by the v3 parser. Documents using `@table` must be migrated to the `key[N]{fields}:` header syntax, or parsed with `spec="v2"`.

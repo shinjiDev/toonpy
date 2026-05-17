@@ -1,49 +1,53 @@
-# TOON SPEC v2.0 Summary
+# TOON SPEC v3.0 Summary
 
-This document condenses the public rules from **TOON SPEC v2.0** so contributors can quickly cross-reference the grammar implemented in `toonpy`. The full specification is ABNF-based; we mirror the essential productions and call out deviations where the upstream document defers to implementation detail.
+This document condenses the public rules from **TOON SPEC v3.0** so contributors can quickly cross-reference the grammar implemented in `toonpy`. The full specification is at https://github.com/toon-format/spec/blob/main/SPEC.md.
 
 ## Core Concepts
 
-- **Indentation-based hierarchy** – indentation (spaces only) expresses structural nesting. Equal indentation denotes sibling entries. Tabs are forbidden.
-- **Key-value objects** – objects are encoded as `key: value`. Keys accept either safe identifiers (`[A-Za-z_][A-Za-z0-9_-]*`) or quoted strings. Values may be inline scalars or nested blocks.
-- **Arrays** – list items begin with `-`. Inline scalars (e.g. `- 42`) are supported; otherwise, a nested block follows on the next indented line.
-- **Tabular mode** – uniform arrays of objects (same key set, stable order) are emitted as tables using the syntax `key[N]{field1,field2}:` where N is the array length. Rows follow with comma-separated values.
-- **Scalars** – strings use JSON-compatible escapes; unquoted identifiers are allowed when safe. Numbers follow the JSON grammar. `true`, `false`, `null` map to native booleans/None.
+- **Indentation-based hierarchy** – indentation (spaces only) expresses structural nesting. Equal indentation denotes sibling entries. Tabs are forbidden for indentation.
+- **Key-value objects** – objects are encoded as `key: value`. Unquoted keys are plain identifiers (`[A-Za-z_][A-Za-z0-9_]*`, no hyphens). Dotted paths (`a.b.c`) allowed unquoted. Quoted keys support any characters.
+- **Arrays (list format)** – introduced by a header `key[N]:` followed by `- item` lines at the next indent level.
+- **Primitive inline arrays** – `key[N]: v1,v2,v3` — compact single-line form for scalar-only arrays.
+- **Tabular arrays** – `key[N]{field1,field2}:` with comma-separated rows. Delimiter in brackets selects row separator: `[N\t]{f1\tf2}:` for tab, `[N|]{f1|f2}:` for pipe.
+- **Root forms** – a document may be: an object (key: value entries), an array (`[N]:` header), or a single primitive.
+- **Scalars** – strings use JSON-compatible escapes; unquoted tokens are valid raw strings when they contain no unsafe characters. Numbers follow JSON grammar. `true`, `false`, `null` map to native booleans/None.
 - **Comments** – line comments start with `#` or `//`. Block comments use `/* ... */` and may nest.
-- **Whitespace** – trailing whitespace is ignored. Blank lines are skipped. Newlines separate logical statements.
+- **Blank lines** – skipped in non-strict mode; in strict mode, blank lines inside a structure raise an error.
+- **Path expansion** – dotted keys (`a.b: v`) can be expanded to nested objects via `from_toon(expand_paths="safe"|"lax")`.
 
-## Simplified ABNF
+## Delimiters
+
+v3 supports three delimiters for tabular and inline arrays:
+
+| Name   | Character | Bracket form | Header example               |
+|--------|-----------|--------------|------------------------------|
+| comma  | `,`       | (none)       | `users[3]{id,name}:`         |
+| tab    | `\t`      | `\t`         | `users[3\t]{id\tname}:`      |
+| pipe   | `\|`      | `\|`         | `users[3\|]{id\|name}:`      |
+
+## Simplified Grammar
 
 ```
-toon-document = wsp* value (newline value)* wsp*
-value         = scalar / object / array / table
-object        = (object-entry newline)* object-entry
-object-entry  = key ":" wsp* (scalar / newline indent value)
-key           = identifier / string
-array         = (array-entry newline)* array-entry
-array-entry   = "-" wsp* (scalar / newline indent value)
-table         = key "[" number "]" "{" key-list "}" ":"
-key-list      = key *(list-sep key)
-table-row     = indent row-cell *(list-sep row-cell)
-list-sep      = wsp* "," wsp*
-row-cell      = scalar
-scalar        = string / number / boolean / null / identifier
-identifier    = ALPHA *(ALPHA / DIGIT / "_" / "-")
+document      = object / root-array / primitive
+object        = (kv-entry / array-header / blank)*
+kv-entry      = key ":" SP? (scalar / block)
+array-header  = key? "[" N delim? "]" ("{" fields "}")? ":" inline?
+key           = identifier / dotted-path / quoted-string
+identifier    = ALPHA *(ALPHA / DIGIT / "_")
+dotted-path   = identifier ("." identifier)+
+scalar        = string / number / "true" / "false" / "null" / raw-token
 ```
-
-### Notes
-
-- Multiline strings use triple quotes: a line that ends with `"""` opens the literal; the first subsequent line with `"""` closes it.
-- Table rows use commas as delimiters. Cells are parsed with JSON string semantics when quoted, otherwise as bare scalars. The header declares the array length and field names: `key[N]{field1,field2}:`.
-- Comments can appear anywhere whitespace is permitted.
-- The canonical serializer keeps dictionary insertion order (Python ≥3.7 guarantees this).
 
 ## Error Handling
 
 - Syntax violations carry line/column information.
-- Unterminated strings/comments are treated as fatal errors.
+- Unterminated strings/comments are fatal errors.
 - Mixed indentation (tabs/spaces or inconsistent widths) is rejected in strict mode.
-- Permissive mode relaxes certain checks (identifier safety, numeric precision) to ease migration.
+- In strict mode: blank lines inside structures, row count mismatches, and delimiter mismatches are errors.
+- Permissive mode (`permissive=True`) relaxes unquoted-string-with-spaces checks.
+
+## Backward Compatibility
+
+Pass `spec="v2"` to `from_toon()` / `to_toon()` to use the v2 parser/serializer. This routes to `toonpy._parser_v2` which is a verbatim copy of the pre-v3 parser.
 
 Refer to `docs/assumptions.md` for any clarifications or local decisions recorded by the toonpy maintainers.
-
