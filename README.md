@@ -10,171 +10,138 @@
 [![Coverage](https://img.shields.io/badge/coverage-90%25-green.svg)](https://github.com/shinjidev/toonpy)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/shinjidev)
 
-A production-grade Python library and CLI that converts data between JSON, YAML, TOML, and TOON (Token-Oriented Object Notation) while fully conforming to **TOON SPEC v2.0**. Perfect for developers and data engineers who need efficient, token-optimized data serialization.
+A production-grade Python library and CLI that converts data between JSON, YAML, TOML, and TOON (Token-Oriented Object Notation) while fully conforming to **TOON SPEC v3.0**. Perfect for developers and data engineers who need efficient, token-optimized data serialization.
 
-**📦 Current Version: 0.5.0** - TOML support added! Now supporting JSON, YAML, and TOML formats. See [What's New in v0.5.0](#-whats-new-in-v050) and [Performance](#-performance) sections for details.
+**📦 Current Version: 0.6.0** — Full TOON spec v3.0 support with multiple delimiters, key folding, path expansion, and significant performance gains. See [What's New in v0.6.0](#-whats-new-in-v060).
 
-**✅ Full TOON SPEC v2.0 Compliance** - This library implements all examples from the [official TOON specification repository](https://github.com/toon-format/spec/tree/main/examples), ensuring complete compatibility with the standard.
+**✅ Full TOON SPEC v3.0 Compliance** — 358/358 official spec fixtures pass. TOON v2 documents are supported via the `spec="v2"` option.
 
-## 🚀 What's New in v0.5.0
+> **Upgrading from v0.5.x?** v3 is fully backward-compatible for most documents. See [Backward Compatibility](#-backward-compatibility) for details.
+>
+> **v2 documentation:** See [README_v2.md](README_v2.md) for the legacy v2-focused reference.
 
-**TOML Support Release** (November 2025) - This version adds comprehensive TOML support, completing our multi-format ecosystem:
+---
 
-- 🔄 **TOML ↔ TOON conversion** - Bidirectional conversion with streaming support
-- 📦 **Optional dependency model** - Zero-dependency core, install TOML support only if needed: `pip install toontools[toml]`
-- 🎯 **CLI commands** - New `toml-to-toon` and `toon-to-toml` commands
-- ⚡ **High performance** - TOML conversion with 124-196% overhead vs pure TOML parsing
-- 💾 **Space efficiency** - TOON format saves up to 53% space for array-of-tables data
-- ✅ **29 new tests** - Comprehensive TOML test coverage with 100% pass rate
-- 📊 **Benchmark suite** - Detailed performance analysis for all conversion scenarios
+## 🚀 What's New in v0.6.0
 
-**Key Performance Metrics:**
-| Scenario | TOML → TOON Time | Space Savings | Round-trip |
-|----------|------------------|---------------|------------|
-| Simple table | 0.025 ms | -15.6% | ✅ YES |
-| Nested tables | 0.046 ms | -16.4% | ✅ YES |
-| Array of tables | 0.080 ms | **+47.1%** | ✅ YES |
-| Complex config | 0.103 ms | -22.4% | ✅ YES |
-| Large dataset (100 entries) | 1.39 ms | **+53.1%** | ✅ YES |
+**TOON SPEC v3.0 Release** (May 2026) — Full implementation of TOON spec v3.0 with major new features and the largest performance jump yet.
 
-**Why Optional Dependencies?**
-- **Lightweight core**: Keep `toontools` dependency-free for JSON ↔ TOON workflows
-- **Install what you need**: Only add PyYAML or tomli/tomli-w if you need YAML/TOML support
-- **Best of both worlds**: Zero-dependency simplicity + extended format support
+### New Language Features
 
-**Previous Releases:**
-- **v0.4.0** (November 2025): YAML support with optional dependencies
-- **v0.3.0** (November 2025): Major performance improvements (20-70% faster)
+| Feature | Description |
+|---------|-------------|
+| **Multiple delimiters** | Tab (`\t`) and pipe (`\|`) in addition to comma for tabular and inline arrays |
+| **Primitive inline arrays** | `key[N]: v1,v2,v3` — compact single-line form for scalar arrays |
+| **Root form disambiguation** | Root arrays (`[N]:`), root objects, and root primitives all parsed correctly |
+| **Blank-line sentinels** | Blank lines inside structures raise errors in strict mode |
+| **v3 key rules** | Unquoted keys are pure identifiers (`[A-Za-z_][A-Za-z0-9_]*`); hyphens always quoted |
 
-**Backward Compatibility:** ✅ **100% compatible** with all previous versions - drop-in replacement, no code changes required!
+### New Serializer Options
 
-See [RELEASE_NOTES.md](RELEASE_NOTES.md) for complete details and [CHANGELOG.md](CHANGELOG.md) for the full changelog.
+| Option | Values | Description |
+|--------|--------|-------------|
+| `delimiter` | `"comma"` (default), `"tab"`, `"pipe"` | Row separator for tabular arrays |
+| `key_folding` | `"off"` (default), `"safe"`, `"lax"` | Collapse single-key chains into dotted paths |
+| `flatten_depth` | integer (default: `inf`) | Maximum nesting depth for key folding |
+
+### New Parser Options
+
+| Option | Values | Description |
+|--------|--------|-------------|
+| `strict` | `True` (default) | Enforce all v3 invariants |
+| `permissive` | `False` (default) | Relax unquoted-string-with-spaces check |
+| `expand_paths` | `"off"` (default), `"safe"`, `"lax"` | Expand dotted keys into nested objects |
+| `spec` | `"v3"` (default), `"v2"` | Route to v2 parser for legacy documents |
+
+### Performance Gains vs v2 Baseline
+
+| Operation | v0.6.0 | v2 Baseline | Gain |
+|-----------|--------|-------------|------|
+| Parser — simple object (4 KVs) | 135,924 docs/sec | ~62,500 | **+117%** |
+| Parser — tabular array 3×3 | 93,085 docs/sec | ~41,667 | **+123%** |
+| Serializer — simple object | 134,248 docs/sec | 97,325 | **+38%** |
+| Serializer — with array | 132,248 docs/sec | 72,308 | **+83%** |
+| Serializer — with table | 80,033 docs/sec | 46,450 | **+72%** |
+| Serializer — complex nested | 56,608 docs/sec | 32,678 | **+73%** |
+| Serializer — many booleans | 101,461 docs/sec | 68,481 | **+48%** |
+
+**Previous Releases:** [v0.5.0](README_v2.md#-whats-new-in-v050) (TOML support) · [v0.4.0](README_v2.md) (YAML support) · [CHANGELOG.md](CHANGELOG.md) for full history.
+
+---
 
 ## ✨ Features
 
-The `toonpy` library provides comprehensive JSON / YAML / TOML ↔ TOON conversion capabilities:
+### Core
 
-### 🔧 1. Lossless Conversion
+- **Lossless round-trip** — all JSON data types preserved across TOON ↔ JSON ↔ YAML ↔ TOML
+- **TOON SPEC v3.0** — full compliance, 358/358 spec fixtures pass
+- **Three delimiters** — comma (default), tab, pipe for tabular and inline arrays
+- **Key folding** — collapse single-key chains into dotted paths (`a.b.c: v`)
+- **Path expansion** — expand dotted keys into nested objects on parse
+- **Strict / permissive modes** — configurable conformance level
+- **Backward compatibility** — `spec="v2"` routes to the pre-v3 parser
 
-* **Bidirectional conversion** between JSON-compatible Python objects and TOON text
-* **Round-trip preservation** - data integrity guaranteed
-* Supports all JSON data types (objects, arrays, scalars)
-* Handles nested structures of any depth
+### Parser
 
-### 📊 2. Advanced Parser & Lexer
+- LL(1) parser with indentation tracking
+- Comment support — inline (`#`, `//`) and block (`/* */`, nestable)
+- Error reporting with line and column numbers
+- Root form disambiguation — objects, arrays, or single primitives at root level
+- Blank-line sentinels in strict mode
 
-* **LL(1) parser** with indentation tracking
-* **Comment support** - inline (`#`, `//`) and block (`/* */`) comments
-* **ABNF-backed grammar** - fully compliant with TOON SPEC v2.0
-* **Error reporting** with line and column numbers
+### Serializer
 
-### 🚀 3. Automatic Tabular Detection
+- Automatic tabular detection — emits `key[N]{fields}:` when it saves characters
+- Primitive inline arrays — emits `key[N]: v1,v2,v3` for scalar-only arrays
+- Key folding — produces dotted paths for deeply nested single-key chains
+- Three delimiter modes — comma, tab, pipe
+- Configurable indentation and serialization modes (`auto`, `compact`, `readable`)
 
-* **Smart detection** of uniform-object arrays
-* **Automatic emission** of efficient tabular mode (`key[N]{fields}:`)
-* **Token savings estimation** using `tiktoken` (optional)
-* **Configurable modes**: auto, compact, readable
+### Tooling
 
-### 🛠️ 4. CLI & Utilities
+- **CLI** (`toonpy`) for file conversion and validation
+- **Streaming helpers** for large files
+- **YAML support** (optional, requires PyYAML)
+- **TOML support** (optional, requires tomli/tomli-w)
+- **Token savings estimation** (optional, requires tiktoken)
 
-* **Command-line interface** (`toonpy`) for file conversion
-* **Validation API** for syntax checking
-* **Streaming helpers** for large files
-* **Formatting tools** for code style consistency
-
-### 🔄 5. Multi-Format Support (Optional)
-
-**YAML Support:**
-* **YAML ↔ TOON conversion** with optimized performance
-* **Streaming YAML to TOON** for large files
-* **CLI commands** for YAML file conversion
-* **Full Unicode support** and proper type handling
-
-**TOML Support:**
-* **TOML ↔ TOON conversion** with high performance
-* **Up to 53% space savings** for array-of-tables data
-* **CLI commands** for TOML file conversion
-* **Round-trip data integrity** preservation
+---
 
 ## 📦 Installation
-
-### Install from PyPI (Recommended)
 
 ```bash
 pip install toontools
 ```
 
-Or install a specific version:
+With optional extras:
 
 ```bash
-pip install toontools==0.5.0
+pip install toontools[yaml]          # YAML ↔ TOON support (requires PyYAML)
+pip install toontools[toml]          # TOML ↔ TOON support (requires tomli, tomli-w)
+pip install toontools[tests]         # Testing dependencies
+pip install toontools[examples]      # tiktoken for token counting
 ```
 
-**📦 PyPI Package:** [toontools on PyPI](https://pypi.org/project/toontools/) | **Latest: v0.3.0**
+**Requirements:** Python 3.9+, zero core dependencies.
 
-### Install from Source
-
-```bash
-# Clone the repository
-git clone https://github.com/shinjidev/toonpy.git
-cd toonpy
-
-# Install the package
-pip install .
-
-# Or install with optional extras
-pip install .[tests]      # Include testing dependencies
-pip install .[examples]   # Include tiktoken for token counting
-pip install .[yaml]       # Include PyYAML for YAML support
-```
-
-**Requirements:** Python 3.9+
-
-**Core Philosophy:** toontools follows a "zero-dependency core" design. The base installation requires no external packages, ensuring fast installs and minimal footprint. Additional format support (YAML, etc.) is available as optional dependencies.
-
-### Optional: YAML Support
-
-To enable YAML ↔ TOON conversion:
-
-```bash
-pip install toontools[yaml]
-# or
-pip install PyYAML>=6.0
-```
-
-### Optional: TOML Support
-
-To enable TOML ↔ TOON conversion:
-
-```bash
-pip install toontools[toml]
-# or
-pip install tomli>=2.0 tomli-w>=1.0
-```
-
-**Why optional?** YAML support is opt-in to keep the core library lightweight (~60KB, 0 dependencies). Most users only need JSON ↔ TOON conversion. If you need YAML support, simply install the extra and all YAML functions become available automatically.
+---
 
 ## 🚀 Quick Start
 
 ```python
-from toontools import to_toon, from_toon
+import toonpy
 
-# Convert Python object to TOON
 data = {
     "crew": [
         {"id": 1, "name": "Luz", "role": "Light glyph"},
-        {"id": 2, "name": "Amity", "role": "Abomination strategist"}
+        {"id": 2, "name": "Amity", "role": "Abomination strategist"},
     ],
-    "active": true,
-    "ship": {
-        "name": "Owl House",
-        "location": "Bonesborough"
-    }
+    "active": True,
+    "ship": {"name": "Owl House", "location": "Bonesborough"},
 }
 
-toon_text = to_toon(data, mode="auto")
-print(toon_text)
-# Output:
+toon = toonpy.to_toon(data)
+print(toon)
 # crew[2]{id,name,role}:
 #   1,Luz,"Light glyph"
 #   2,Amity,"Abomination strategist"
@@ -183,830 +150,467 @@ print(toon_text)
 #   name: "Owl House"
 #   location: Bonesborough
 
-# Convert TOON back to Python object
-round_trip = from_toon(toon_text)
-assert round_trip == data  # ✅ Perfect round-trip!
+parsed = toonpy.from_toon(toon)
+assert parsed == data  # perfect round-trip
 ```
 
-## 📖 Detailed Usage
+---
 
-### Python API
+## 📖 API Reference
 
-#### Basic Conversion
+### `to_toon(obj, *, indent=2, mode="auto", delimiter="comma", key_folding="off", flatten_depth=inf) -> str`
+
+Convert a Python object to a TOON string.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `obj` | Any | — | Python object (JSON-compatible) |
+| `indent` | int | `2` | Spaces per indentation level |
+| `mode` | str | `"auto"` | `"auto"` · `"compact"` · `"readable"` |
+| `delimiter` | str | `"comma"` | Row separator: `"comma"` · `"tab"` · `"pipe"` |
+| `key_folding` | str | `"off"` | `"off"` · `"safe"` · `"lax"` — collapse single-key chains into dotted paths |
+| `flatten_depth` | int | `inf` | Max nesting depth for key folding |
 
 ```python
-from toontools import to_toon, from_toon
+from toonpy import to_toon
 
-# JSON → TOON
-data = {"name": "Luz", "age": 16, "active": True}
-toon = to_toon(data, indent=2, mode="auto")
+# Default (comma delimiter, no key folding)
+toon = to_toon(data)
 
-# TOON → JSON
-parsed = from_toon(toon)
-assert parsed == data
+# Tab-delimited tabular arrays
+toon = to_toon(data, delimiter="tab")
+
+# Pipe-delimited + key folding
+toon = to_toon(data, delimiter="pipe", key_folding="safe")
+
+# Compact output, no tabular promotion
+toon = to_toon(data, mode="compact")
 ```
 
-#### Validation
+---
+
+### `from_toon(source, *, strict=True, permissive=False, indent=2, expand_paths="off", delimiter="comma", spec="v3") -> Any`
+
+Parse a TOON string into a Python object.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `source` | str | — | TOON-formatted string |
+| `strict` | bool | `True` | Enforce all v3 invariants (blank-line sentinels, row count, etc.) |
+| `permissive` | bool | `False` | Allow unquoted strings with spaces |
+| `expand_paths` | str | `"off"` | `"off"` · `"safe"` · `"lax"` — expand dotted keys into nested objects |
+| `spec` | str | `"v3"` | `"v3"` (default) or `"v2"` to use the legacy parser |
 
 ```python
-from toontools import validate_toon
+from toonpy import from_toon
 
-toon_text = """
-crew[2]{id,name}:
-  1,Luz
-  2,Amity
-"""
+# Default strict v3 parsing
+data = from_toon(toon)
 
-is_valid, errors = validate_toon(toon_text, strict=True)
-if not is_valid:
-    for error in errors:
-        print(f"Error: {error}")
+# Permissive: allow unquoted strings with spaces
+data = from_toon(toon, permissive=True)
+
+# Expand dotted keys: "a.b.c: 1" → {"a": {"b": {"c": 1}}}
+data = from_toon(toon, expand_paths="safe")
+
+# Parse a v2 document
+data = from_toon(legacy_toon, spec="v2")
 ```
 
-#### Tabular Suggestions
+**Raises:** `ToonSyntaxError` with `line` and `column` attributes on malformed input.
+
+---
+
+### `validate_toon(source, *, strict=True) -> tuple[bool, list[ValidationError]]`
 
 ```python
-from toontools import suggest_tabular
+from toonpy import validate_toon
 
-crew = [
-    {"id": 1, "name": "Luz"},
-    {"id": 2, "name": "Amity"}
-]
-
-suggestion = suggest_tabular(crew)
-if suggestion.use_tabular:
-    print(f"Use tabular format! Estimated savings: {suggestion.estimated_savings} tokens")
-    print(f"Fields: {suggestion.keys}")
+ok, errors = validate_toon(toon_text)
+for e in errors:
+    print(f"line {e.line}: {e.message}")
 ```
 
-#### Streaming Large Files
+---
+
+### `suggest_tabular(obj) -> TabularSuggestion`
 
 ```python
-from toontools import stream_to_toon
+from toonpy import suggest_tabular
 
-with open("large_data.json", "r") as fin, open("output.toon", "w") as fout:
-    bytes_written = stream_to_toon(fin, fout, mode="compact")
-    print(f"Converted {bytes_written} bytes")
+s = suggest_tabular(rows)
+if s.use_tabular:
+    print(f"Tabular saves ~{s.estimated_savings} chars. Fields: {s.keys}")
 ```
 
-#### YAML Support
+---
 
-**Convert YAML to TOON:**
+### `stream_to_toon(fin, fout, *, chunk_size=65536, indent=2, mode="auto") -> int`
+
+Stream JSON from an input file to TOON output. Returns bytes written.
 
 ```python
-from toontools import to_toon_from_yaml
+from toonpy import stream_to_toon
 
-yaml_str = """
-crew:
-  - id: 1
-    name: Luz
-    role: Magic user
-  - id: 2
-    name: Amity
-    role: Strategist
-"""
-
-toon_str = to_toon_from_yaml(yaml_str, mode="auto")
-print(toon_str)
-# Output:
-# crew[2]{id,name,role}:
-#   1,Luz,"Magic user"
-#   2,Amity,Strategist
+with open("large.json") as fin, open("large.toon", "w") as fout:
+    stream_to_toon(fin, fout)
 ```
 
-**Convert TOON to YAML:**
+---
+
+### YAML Functions (optional — requires `pip install toontools[yaml]`)
 
 ```python
-from toontools import to_yaml_from_toon
+from toonpy import to_toon_from_yaml, to_yaml_from_toon, stream_yaml_to_toon
 
-toon_str = """
-crew[2]{id,name}:
-  1,Luz
-  2,Amity
-active: true
-"""
+toon = to_toon_from_yaml(yaml_str, mode="auto")
+yaml = to_yaml_from_toon(toon_str)
 
-yaml_str = to_yaml_from_toon(toon_str)
-print(yaml_str)
-# Output:
-# crew:
-# - id: 1
-#   name: Luz
-# - id: 2
-#   name: Amity
-# active: true
+with open("data.yaml") as fin, open("out.toon", "w") as fout:
+    stream_yaml_to_toon(fin, fout)
 ```
 
-**Stream YAML to TOON:**
+---
+
+### TOML Functions (optional — requires `pip install toontools[toml]`)
 
 ```python
-from toontools import stream_yaml_to_toon
+from toonpy import to_toon_from_toml, to_toml_from_toon, stream_toml_to_toon
 
-with open("data.yaml", "r") as fin, open("output.toon", "w") as fout:
-    bytes_written = stream_yaml_to_toon(fin, fout, mode="auto")
-    print(f"Converted {bytes_written} bytes")
+toon = to_toon_from_toml(toml_str, mode="auto")
+toml = to_toml_from_toon(toon_str)
+
+with open("config.toml") as fin, open("out.toon", "w") as fout:
+    stream_toml_to_toon(fin, fout)
 ```
 
-**Note:** Requires `pip install toontools[yaml]` or `pip install PyYAML>=6.0`
+---
 
-#### TOML Support
+## 🆕 v3.0 Features in Depth
 
-**Convert TOML to TOON:**
+### Multiple Delimiters
 
-```python
-from toontools import to_toon_from_toml
+v3 supports comma (default), tab, and pipe as row separators in tabular arrays:
 
-toml_str = """
-[user]
-name = "Luz Noceda"
-age = 14
-active = true
-
-[[crew]]
-id = 1
-name = "Luz"
-role = "Human"
-
-[[crew]]
-id = 2
-name = "Eda"
-role = "Witch"
-"""
-
-toon_str = to_toon_from_toml(toml_str, mode="auto")
-print(toon_str)
-# Output uses compact tabular format for crew array
 ```
-
-**Convert TOON to TOML:**
-
-```python
-from toontools import to_toml_from_toon
-
-toon_str = """
-user:
-  name: "Luz Noceda"
-  age: 14
-  active: true
-
-crew[2]{id,name,role}:
+# comma (default)
+users[3]{id,name,role}:
   1,Luz,Human
   2,Eda,Witch
-"""
+  3,King,Titan
 
-toml_str = to_toml_from_toon(toon_str)
-print(toml_str)
-# Output:
-# [user]
-# name = "Luz Noceda"
-# age = 14
-# active = true
-# 
-# crew = [
-#     { id = 1, name = "Luz", role = "Human" },
-#     { id = 2, name = "Eda", role = "Witch" },
-# ]
+# pipe
+users[3|]{id|name|role}:
+  1|Luz|Human
+  2|Eda|Witch
+  3|King|Titan
+
+# tab
+users[3\t]{id\tname\trole}:
+  1\tLuz\tHuman
+  2\tEda\tWitch
+  3\tKing\tTitan
 ```
 
-**Stream TOML to TOON:**
+Choose via `to_toon(data, delimiter="pipe")` or `from_toon(toon, delimiter="tab")`.
+
+---
+
+### Primitive Inline Arrays
+
+Scalar-only arrays can be written on a single line:
+
+```
+tags[3]: python,serialization,toon
+scores[5]: 98,87,92,76,100
+```
+
+The serializer emits this format automatically when all elements are scalars.
+
+---
+
+### Key Folding (Serializer)
+
+Collapse single-key chains into dotted paths:
 
 ```python
-from toontools import stream_toml_to_toon
+data = {"config": {"server": {"host": "localhost"}}}
 
-with open("config.toml", "r") as fin, open("output.toon", "w") as fout:
-    bytes_written = stream_toml_to_toon(fin, fout, mode="auto")
-    print(f"Converted {bytes_written} bytes")
+to_toon(data, key_folding="safe")
+# config.server.host: localhost
+
+to_toon(data, key_folding="safe", flatten_depth=1)
+# config:
+#   server.host: localhost
 ```
 
-**Note:** Requires `pip install toontools[toml]` or `pip install tomli>=2.0 tomli-w>=1.0`
+- `"safe"` — only folds plain identifier segments; refuses ambiguous cases
+- `"lax"` — folds any segment, last-write-wins on conflicts
 
-### Command-Line Interface
+---
 
-#### Convert JSON to TOON
+### Path Expansion (Parser)
 
-```bash
-toonpy to --in data.json --out data.toon --mode readable --indent 2
+Expand dotted keys into nested objects:
+
+```python
+toon = "config.server.host: localhost"
+
+from_toon(toon)
+# {"config.server.host": "localhost"}   # default: no expansion
+
+from_toon(toon, expand_paths="safe")
+# {"config": {"server": {"host": "localhost"}}}
 ```
 
-#### Convert TOON to JSON
+- `"safe"` — only expands plain identifiers; conflicts raise `ToonSyntaxError`
+- `"lax"` — expands all dotted keys; last-write-wins on conflicts
+
+---
+
+### Strict Mode
+
+In strict mode (default), these raise `ToonSyntaxError`:
+
+- Blank lines inside structures
+- Row count ≠ declared N in tabular arrays
+- Delimiter mismatch between header bracket and row separator
+- Mixed indentation (tabs and spaces)
+
+Pass `strict=False` or `permissive=True` to relax these checks.
+
+---
+
+## ↩️ Backward Compatibility
+
+### v3 is the default
+
+`from_toon()` and `to_toon()` now default to TOON spec v3.0.
+
+### Most v2 documents parse without changes
+
+The only v2 construct that will fail in v3 strict mode is `@table` (the pipe-bordered table format). All other v2 syntax is valid v3.
+
+### Opt in to the v2 parser
+
+```python
+# Parse a document using the pre-v3 parser
+data = from_toon(legacy_toon, spec="v2")
+
+# Serialize using v2 rules
+toon = to_toon(data, spec="v2")
+```
+
+The v2 parser (`toonpy._parser_v2`) is a verbatim copy of the pre-v3 parser and is fully maintained.
+
+### API changes
+
+| Old (≤0.5.x) | New (0.6.0+) | Notes |
+|---|---|---|
+| `from_toon(src, mode="strict")` | `from_toon(src, strict=True)` | `mode` kwarg removed; use `strict`/`permissive` |
+| `from_toon(src, mode="permissive")` | `from_toon(src, permissive=True)` | |
+| `to_toon(obj, mode="auto")` | `to_toon(obj, mode="auto")` | unchanged |
+
+---
+
+## 🖥️ CLI Reference
 
 ```bash
+# JSON → TOON
+toonpy to --in data.json --out data.toon --mode auto --indent 2
+
+# TOON → JSON
+toonpy from --in data.toon --out data.json
+
+# Permissive parsing
 toonpy from --in data.toon --out data.json --permissive
-```
 
-#### Format a TOON File
+# Use v2 parser for legacy documents
+toonpy from --in legacy.toon --out data.json --spec v2
 
-```bash
+# Format / round-trip a TOON file
 toonpy fmt --in data.toon --out data.formatted.toon --mode readable
-```
 
-#### Convert YAML to TOON
-
-```bash
-toonpy yaml-to-toon --in data.yaml --out data.toon --mode auto
-```
-
-#### Convert TOON to YAML
-
-```bash
+# YAML ↔ TOON  (requires pip install toontools[yaml])
+toonpy yaml-to-toon --in data.yaml --out data.toon
 toonpy toon-to-yaml --in data.toon --out data.yaml
-```
 
-**Note:** YAML commands require `pip install toontools[yaml]`
-
-#### Convert TOML to TOON
-
-```bash
-toonpy toml-to-toon --in config.toml --out config.toon --mode auto
-```
-
-#### Convert TOON to TOML
-
-```bash
+# TOML ↔ TOON  (requires pip install toontools[toml])
+toonpy toml-to-toon --in config.toml --out config.toon
 toonpy toon-to-toml --in data.toon --out data.toml
 ```
 
-**Note:** TOML commands require `pip install toontools[toml]`
+**Exit codes:** `0` success · `2` syntax error · `3` general error · `4` I/O error
 
-**Exit Codes:**
-- `0` - Success
-- `2` - TOON syntax error
-- `3` - General error
-- `4` - I/O error
-
-## 🧪 Testing
-
-The library includes comprehensive unit tests, property-based tests, and performance benchmarks:
-
-```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=toonpy --cov-report=html
-
-# Run performance benchmarks
-pytest tests/test_benchmark.py -v -s
-
-# Run specific test file
-pytest tests/test_parser.py -v
-```
-
-**Test Coverage:**
-- ✅ Unit tests for parser, serializer, API, and CLI
-- ✅ Property-based tests with Hypothesis for round-trip verification
-- ✅ Performance benchmarks for speed validation
-- ✅ Edge cases: multiline strings, comments, empty containers
-- ✅ Error handling and validation
-
-**Example Test Output:**
-
-```
-============================= test session starts =============================
-tests/test_parser.py::test_parse_object_and_array PASSED
-tests/test_parser.py::test_parse_table_block PASSED
-tests/test_serializer.py::test_round_trip_simple PASSED
-tests/test_benchmark.py::test_serialize_small_data PASSED
-...
-============================== 20+ passed in 3.45s ==============================
-```
+---
 
 ## ⚡ Performance
 
-`toonpy` v0.3.0 delivers **exceptional performance** with major speed improvements across all components. This release represents a comprehensive optimization effort with measurable gains of 20-70% in key operations.
+v0.6.0 is the fastest release yet, with parser throughput more than doubled vs the v2 baseline:
 
-### 🚀 Performance Highlights (v0.3.0)
+| Operation | v0.6.0 | v2 Baseline | Improvement |
+|-----------|--------|-------------|-------------|
+| Parser — simple object (4 KVs) | **135,924 docs/sec** | ~62,500 | +117% |
+| Parser — tabular array 3×3 | **93,085 docs/sec** | ~41,667 | +123% |
+| Serializer — simple object | **134,248 docs/sec** | 97,325 | +38% |
+| Serializer — with array | **132,248 docs/sec** | 72,308 | +83% |
+| Serializer — with table | **80,033 docs/sec** | 46,450 | +72% |
+| Serializer — complex nested | **56,608 docs/sec** | 32,678 | +73% |
+| Serializer — many booleans | **101,461 docs/sec** | 68,481 | +48% |
 
-| Component | Key Operation | Improvement | Impact |
-|-----------|--------------|-------------|---------|
-| **Parser** | Comment-free files | **+70%** | Dramatically faster parsing when no comments present |
-| **Parser** | Literal parsing | **+30-40%** | Common values (`true`, `false`, `null`) cached |
-| **Parser** | Overall parsing | **+20-50%** | Comprehensive optimizations across all operations |
-| **Serializer** | Key serialization paths | **+70%** | Type checking streamlined |
-| **Serializer** | Container handling | **+35-40%** | Reduced redundant `isinstance()` checks |
-| **Utils** | Number parsing | **+10-15%** | Try/except approach with regex fallback |
-| **Utils** | Row splitting | **Significant** | String slicing instead of char-by-char building |
-| **Parallel** | Memory usage | **Improved** | `executor.map()` for better efficiency |
+Key optimizations in v0.6.0:
 
-### Benchmark Results
+- **Parser**: `_parse_header_syntax` (regex) skipped via `"[" not in line` fast path — eliminates the regex for ~99% of KV lines
+- **Parser**: `_split_key_value` uses `str.find(":")` fast path for unquoted keys instead of full character walking
+- **Parser**: `_parse_object` and `_parse_table_rows` cache `self.lines` and `len(lines)` to avoid repeated attribute lookups
+- **Serializer**: `type(item) is dict` replaces `isinstance(x, typing.Mapping)` — avoids slow ABC machinery
+- **Serializer**: `_maybe_tabular` auto mode no longer calls `json.dumps` for the savings estimate — O(n) key-length arithmetic instead
+- **Utils**: `tabular_schema` savings calculation is O(n) arithmetic, no serialization
 
-Run the benchmarks to see real-time performance metrics:
+Run the benchmarks:
 
 ```bash
-# Run comprehensive benchmark suite
-pytest tests/test_benchmark.py -v -s
-
-# Run module-specific benchmarks
-python benchmark_optimizations.py    # Parser benchmarks
-python benchmark_serializer.py       # Serializer benchmarks
-python benchmark_parallel.py         # Parallel module benchmarks
+python benchmark_before.py     # v2 baseline numbers
+python benchmark_after.py      # v0.6.0 numbers
 ```
 
-**Typical Performance (v0.3.0 on modern hardware):**
+---
 
-| Operation | Dataset Size | Time | Throughput | vs v0.2.0 |
-|-----------|--------------|------|------------|-----------|
-| Serialize small data | 3 fields | ~0.010 ms | ~100K ops/s | **+30% faster** |
-| Parse small data | 3 fields | ~0.012 ms | ~83K ops/s | **+40% faster** |
-| Serialize tabular | 100 rows | ~0.30 ms | ~3,300 ops/s | **~70% faster** |
-| Parse tabular | 100 rows | ~1.20 ms | ~830 ops/s | **~40% faster** |
-| Round-trip | 500 rows | ~8.5 ms | ~118 ops/s | **~40% faster** |
-| Large file (1000 rows) | 1K records | ~3-4 ms | ~250-330 ops/s | **~50% faster** |
-| Nested structures | Depth 10 | ~0.25 ms | ~4,000 ops/s | **~170% faster** |
-| Comment removal | Comment-free | ~0.05 ms | 20K ops/s | **~70% faster** |
+## 🧪 Testing
 
-**Performance Characteristics:**
-- ⚡ **Blazing fast serialization** - Optimized with literal caching and streamlined logic
-- 🚀 **Efficient tabular format** - Automatic detection reduces token count by 30-50%
-- 📊 **Competitive with JSON** - Now only 3-5x slower than JSON (vs 7-12x in v0.2.0)
-- 🔄 **Fast round-trips** - Complete JSON → TOON → JSON conversion in single-digit milliseconds
-- 💾 **Token savings** - Tabular format ideal for LLM applications
-- 🎯 **Production-ready** - Optimized for real-world workloads
+```bash
+# Run all tests (includes 358 official spec fixtures)
+pytest
 
-**Example Benchmark Output (v0.3.0):**
+# With coverage
+pytest --cov=toonpy --cov-report=html
 
-```
-[Benchmark] Small data serialization: 0.010 ms/op (30% faster)
-[Benchmark] Small data parsing: 0.012 ms/op (40% faster)
-[Benchmark] Tabular data serialization (100 rows): 0.300 ms (70% faster)
-[Benchmark] Tabular data parsing (100 rows): 1.200 ms (40% faster)
-[Benchmark] Round-trip (500 rows): 8.500 ms (40% faster)
-[Benchmark] Performance comparison (100 rows):
-  JSON:  0.080 ms
-  TOON:  0.350 ms (v0.3.0)
-  Ratio: 4.37x (vs 7.41x in v0.2.0)
+# Spec fixture tests only
+pytest tests/test_spec_fixtures.py -v
+
+# Parser / serializer unit tests
+pytest tests/test_parser.py tests/test_serializer.py -v
 ```
 
-### 🚀 Performance Optimizations
+**Test coverage:**
+- ✅ 358/358 official TOON spec v3.0 fixtures
+- ✅ Parser unit tests (strict, permissive, path expansion, all delimiters)
+- ✅ Serializer unit tests (key folding, inline arrays, delimiter modes)
+- ✅ API tests (backward compatibility, `spec="v2"` dispatch)
+- ✅ Property-based round-trip tests (Hypothesis)
+- ✅ YAML and TOML integration tests
 
-The v0.3.0 release includes comprehensive optimizations across all modules. Below are the key improvements:
+---
 
-#### **New in v0.3.0:** Core Parser & Serializer Optimizations
+## 📊 TOON Format Overview
 
-##### 1. **Literal Caching** (~30-40% improvement for common values)
+TOON (Token-Oriented Object Notation) is an indentation-based format optimized for token efficiency in LLM applications.
 
-**What was done:**
-- Implemented `_LITERAL_CACHE` dictionary for frequently used tokens
-- Pre-stores parsed values for `"true"`, `"false"`, `"null"`, `"[]"`, `"{}"`
-- Early return pattern in `_parse_token()` to check cache first
-
-**Why it's faster:**
-- **Before**: Every literal required string processing, type detection, and conversion
-- **After**: Common literals return cached value instantly, skipping all parsing logic
-- **Impact**: Massive speedup for files with many boolean/null values
-
-**Code example:**
-```python
-# Before (slow):
-if token.lower() == "true":
-    return True
-elif token.lower() == "false":
-    return False
-# ... more checks
-
-# After (fast):
-cached = _LITERAL_CACHE.get(token.lower())
-if token.lower() in _LITERAL_CACHE:
-    return cached  # Instant return
+**Key/value object:**
 ```
-
-##### 2. **StringIO-based Comment Removal** (~70% improvement for comment-free files)
-
-**What was done:**
-- Refactored `_remove_block_comments()` to use `io.StringIO`
-- Added early return if no block comments detected
-- Eliminated character-by-character string building
-
-**Why it's faster:**
-- **Before**: Always processed entire file character-by-character, building result with string concatenation
-- **After**: Early exit if no `/*` found, uses efficient `StringIO` when needed
-- **Impact**: Most TOON files have no block comments, so they skip processing entirely
-
-##### 3. **Try/Except Number Parsing** (~10-15% improvement in utils)
-
-**What was done:**
-- Changed `guess_number()` to use try/except for `int()` and `float()`
-- Regex used only for strict validation, not primary parsing
-- Early rejection based on first character
-
-**Why it's faster:**
-- **Before**: Regex pattern matching for every number, which is relatively slow
-- **After**: Native Python int/float conversion (fast path), regex only for edge cases
-- **Impact**: Number-heavy files parse significantly faster
-
-##### 4. **Streamlined Type Checking** (~35-40% improvement in serializer)
-
-**What was done:**
-- Optimized `_inline_container_repr()` to minimize `isinstance()` calls
-- Removed redundant type checks in `_write_value()`
-- Better code flow to avoid repeated checks
-
-**Why it's faster:**
-- **Before**: Multiple `isinstance()` checks for same object
-- **After**: Check once, remember result, use efficient logic flow
-- **Impact**: Especially noticeable when serializing many objects
-
-##### 5. **String Slicing for Row Parsing** (Significant improvement in utils)
-
-**What was done:**
-- Replaced character-by-character list building in `split_escaped_row()`
-- Used efficient string slicing to extract segments
-- Eliminated intermediate list and `join()` overhead
-
-**Why it's faster:**
-- **Before**: Loop through each char, append to list, join at end
-- **After**: Slice string directly at split points
-- **Impact**: Much faster for tabular data with many rows
-
-#### **From v0.2.0:** Base Optimizations
-
-##### 6. **Indentation Caching** (~15-20% improvement in nested structures)
-
-**What was done:**
-- Implemented a cache for indentation strings (0-20 levels)
-- Pre-computes common indentation strings instead of creating them repeatedly
-- Uses `_get_indent()` method with `_indent_cache` dictionary
-
-**Why it's faster:**
-- **Before**: Each line required creating a new string with `" " * (level * indent)`, which allocates memory and performs string multiplication repeatedly
-- **After**: Common indentation levels are computed once and reused, eliminating redundant string creation
-- **Impact**: Most noticeable in deeply nested structures where the same indentation levels are used many times
-
-**Code example:**
-```python
-# Before (slow):
-lines.append(" " * level + content)  # Creates new string every time
-
-# After (fast):
-indent_str = self._get_indent(level)  # Uses cache
-lines.append(indent_str + content)
-```
-
-##### 7. **String Concatenation Optimization** (~5-10% general, ~60% in tabular)
-
-**What was done:**
-- Eliminated string concatenation with `+` operator in loops
-- Pre-compute common prefixes (like `"-"` for arrays)
-- Use `join()` once at the end instead of multiple concatenations
-- Build rows as lists and join once per row
-
-**Why it's faster:**
-- **Before**: Python's `+` operator for strings creates new string objects each time, which is O(n) for each concatenation
-- **After**: Building a list and using `join()` is O(n) total, much more efficient
-- **Impact**: Especially noticeable in tabular format where many rows are processed
-
-**Code example:**
-```python
-# Before (slow):
-row = ""
-for cell in cells:
-    row += cell + ","  # Creates new string each iteration
-
-# After (fast):
-row_str = ",".join(cells)  # Single join operation
-```
-
-##### 8. **Compiled Regular Expressions** (~3-5% improvement in parsing)
-
-**What was done:**
-- Compiled regex patterns as class attributes instead of compiling them on each call
-- Patterns are compiled once when the class is defined, not per instance
-
-**Why it's faster:**
-- **Before**: `re.match(pattern, text)` compiles the pattern every time it's called
-- **After**: Pre-compiled patterns stored as `_QUOTED_TABLE_PATTERN` and `_UNQUOTED_TABLE_PATTERN` are reused
-- **Impact**: Most noticeable when parsing many table headers
-
-**Code example:**
-```python
-# Before (slow):
-match = re.match(r'^"([^"]+)"\[(\d+)\]\{([^}]+)\}:$', content)
-
-# After (fast):
-match = self._QUOTED_TABLE_PATTERN.match(content)  # Pre-compiled
-```
-
-##### 9. **Line Ending Normalization Optimization** (~1-2% improvement)
-
-**What was done:**
-- Only normalize line endings if `\r` is present in the source
-- Avoids unnecessary string operations on Unix-style text
-
-**Why it's faster:**
-- **Before**: Always performed `replace("\r\n", "\n").replace("\r", "\n")` even when not needed
-- **After**: Checks for `\r` first, only normalizes if necessary
-- **Impact**: Small but consistent improvement, especially for large files
-
-##### 10. **Optional Parallelism Module** (2-4x for large arrays >10K elements)
-
-**What was done:**
-- Created `toonpy.parallel` module with `parallel_serialize_chunks()`
-- Uses `concurrent.futures` (ThreadPoolExecutor or ProcessPoolExecutor)
-- Allows processing large arrays in parallel chunks
-
-**Why it's faster:**
-- **Before**: Large arrays processed sequentially on a single core
-- **After**: Arrays divided into chunks, each processed in parallel
-- **Impact**: Significant speedup for very large datasets (>10K elements) on multi-core systems
-
-**Usage:**
-```python
-from toonpy.parallel import parallel_serialize_chunks, chunk_sequence
-from toonpy import ToonSerializer
-
-large_array = [{"id": i} for i in range(50000)]
-chunks = chunk_sequence(large_array, chunk_size=5000)
-serializer = ToonSerializer()
-
-results = parallel_serialize_chunks(
-    chunks,
-    serializer.dumps,
-    use_threads=False,  # Use processes for CPU-bound work
-    max_workers=4
-)
-```
-
-### Performance Comparison Summary
-
-| Optimization | Improvement | Best For | Version |
-|--------------|------------|----------|---------|
-| **Literal Caching** | 30-40% | Files with many booleans/nulls | v0.3.0 |
-| **StringIO Comment Removal** | 70% | Comment-free files (most common) | v0.3.0 |
-| **Try/Except Number Parsing** | 10-15% | Number-heavy data | v0.3.0 |
-| **Streamlined Type Checking** | 35-40% | Object serialization | v0.3.0 |
-| **String Slicing Row Parsing** | Significant | Tabular data with many rows | v0.3.0 |
-| Indentation Caching | 15-20% | Nested structures, deep hierarchies | v0.2.0 |
-| String Concatenation | 5-10% general, 60% tabular | Tabular arrays, large datasets | v0.2.0 |
-| Compiled Regex | 3-5% | Table parsing, repeated patterns | v0.2.0 |
-| Line Ending Optimization | 1-2% | Large files, Unix-style text | v0.2.0 |
-| Parallelism | 2-4x | Arrays >10K elements | v0.2.0 |
-
-**Overall Impact (v0.3.0 vs v0.2.0):**
-- **Parser**: 20-50% faster overall, 70% faster for comment-free files
-- **Serializer**: Up to 70% faster in key paths, 35-40% faster container handling
-- **Utils**: 10-15% faster number parsing, significant row parsing improvement
-- **Tabular serialization**: ~70% faster (0.30 ms vs 0.55 ms)
-- **Tabular parsing**: ~40% faster (1.20 ms vs 1.70 ms)
-- **Round-trip**: ~40% faster (8.5 ms vs 11.9 ms)
-- **Nested structures**: ~170% faster throughput (4,000 ops/s vs 2,300 ops/s)
-
-**v0.3.0 vs v0.1.0 (Initial Release):**
-- **Parser**: ~100-150% faster (2-2.5x speedup)
-- **Serializer**: ~200% faster (3x speedup)
-- **Overall throughput**: ~140% improvement
-
-These optimizations maintain full TOON SPEC v2.0 compliance while dramatically improving performance. All improvements are production-tested with 24/24 tests passing.
-
-**📚 Detailed Documentation:**
-- [RELEASE_NOTES.md](RELEASE_NOTES.md) - Complete v0.3.0 release notes
-- [OPTIMIZATIONS_DOCUMENTED.md](OPTIMIZATIONS_DOCUMENTED.md) - 23-page technical analysis
-- [ALL_OPTIMIZATIONS_SUMMARY.md](ALL_OPTIMIZATIONS_SUMMARY.md) - Comprehensive overview
-- Run `benchmark_optimizations.py`, `benchmark_serializer.py`, `benchmark_parallel.py` for detailed metrics
-
-## 📊 Example Output
-
-**Input JSON:**
-
-```json
-{
-  "crew": [
-    {"id": 1, "name": "Luz", "role": "Light glyph"},
-    {"id": 2, "name": "Amity", "role": "Abomination strategist"}
-  ],
-  "active": true,
-  "ship": {
-    "name": "Owl House",
-    "location": "Bonesborough"
-  }
-}
-```
-
-**Output TOON (auto mode):**
-
-```
-crew[2]{id,name,role}:
-  1,Luz,"Light glyph"
-  2,Amity,"Abomination strategist"
+name: Luz
+age: 16
 active: true
+```
+
+**Array (list format):**
+```
+crew[3]:
+  - Luz
+  - Amity
+  - Willow
+```
+
+**Tabular array (most compact for uniform objects):**
+```
+crew[3]{id,name,role}:
+  1,Luz,Human
+  2,Eda,Witch
+  3,King,Titan
+```
+
+**Primitive inline array:**
+```
+tags[3]: python,serialization,toon
+```
+
+**Nested object:**
+```
 ship:
   name: "Owl House"
   location: Bonesborough
 ```
 
-**Token Savings:** The tabular format (`crew[2]{id,name,role}:`) reduces token count by ~40% compared to standard JSON array format!
-
-## 🛠️ API Reference
-
-### Core Functions
-
-#### `to_toon(obj, *, indent=2, mode="auto") -> str`
-
-Convert a Python object to TOON format string.
-
-**Parameters:**
-- `obj` (Any): Python object compatible with JSON model
-- `indent` (int): Number of spaces per indentation level (default: 2)
-- `mode` (str): Serialization mode - `"auto"`, `"compact"`, or `"readable"`
-
-**Returns:** `str` - TOON-formatted string
-
-**Example:**
-```python
-data = {"name": "Luz", "active": True}
-toon = to_toon(data, mode="auto")
+**Multiline string:**
+```
+bio: """
+  Luz is a human teen from the real world
+  who stumbled upon the Boiling Isles.
+"""
 ```
 
----
-
-#### `from_toon(source, *, mode="strict") -> Any`
-
-Parse a TOON string into a Python object.
-
-**Parameters:**
-- `source` (str): TOON-formatted string to parse
-- `mode` (str): Parsing mode - `"strict"` or `"permissive"`
-
-**Returns:** `Any` - Python object (dict, list, or scalar)
-
-**Raises:** `ToonSyntaxError` if TOON string is malformed
-
-**Example:**
-```python
-toon = 'name: "Luz"\nactive: true'
-data = from_toon(toon)
+**Comments:**
+```
+# line comment
+// also a line comment
+/* block comment */
 ```
 
----
-
-#### `validate_toon(source, *, strict=True) -> tuple[bool, List[ValidationError]]`
-
-Validate a TOON string for syntax errors.
-
-**Parameters:**
-- `source` (str): TOON-formatted string to validate
-- `strict` (bool): If True, use strict parsing mode
-
-**Returns:** `tuple[bool, List[ValidationError]]` - (is_valid, list_of_errors)
+For the full grammar, see [docs/spec_summary.md](docs/spec_summary.md) and the [official TOON spec](https://github.com/toon-format/spec/blob/main/SPEC.md).
 
 ---
-
-#### `suggest_tabular(obj) -> TabularSuggestion`
-
-Suggest whether an array should use tabular format.
-
-**Parameters:**
-- `obj` (Sequence): Sequence to analyze
-
-**Returns:** `TabularSuggestion` - Recommendation with estimated savings
-
----
-
-#### `stream_to_toon(fileobj_in, fileobj_out, *, chunk_size=65536, indent=2, mode="auto") -> int`
-
-Stream JSON from input file to TOON output file.
-
-**Parameters:**
-- `fileobj_in` (TextIO): Input file object containing JSON
-- `fileobj_out` (TextIO): Output file object for TOON
-- `chunk_size` (int): Size of chunks to read (default: 65536)
-- `indent` (int): Indentation level
-- `mode` (str): Serialization mode
-
-**Returns:** `int` - Number of bytes written
-
----
-
-### Error Classes
-
-#### `ToonSyntaxError`
-
-Raised when TOON input does not conform to the grammar.
-
-**Attributes:**
-- `message` (str): Error message
-- `line` (int | None): Line number (1-indexed)
-- `column` (int | None): Column number (1-indexed)
-
-**Example:**
-```python
-try:
-    data = from_toon("invalid syntax")
-except ToonSyntaxError as e:
-    print(f"Error at line {e.line}, column {e.column}: {e.message}")
-```
-
-## 📝 Requirements
-
-* Python >= 3.9
-* No external dependencies (pure Python)
-* Optional: `tiktoken >= 0.5.2` for token counting (install with `pip install .[examples]`)
 
 ## 📚 Documentation
 
-Comprehensive documentation is available in the repository:
+| File | Description |
+|------|-------------|
+| [docs/spec_summary.md](docs/spec_summary.md) | TOON SPEC v3.0 grammar reference |
+| [docs/assumptions.md](docs/assumptions.md) | Implementation decisions and strict/permissive behavior |
+| [CHANGELOG.md](CHANGELOG.md) | Full version history |
+| [README_v2.md](README_v2.md) | Legacy v2-focused documentation |
 
-### Core Documentation
-- **`docs/spec_summary.md`** – Concise TOON SPEC v2.0 overview with ABNF notes
-- **`docs/examples.md`** – JSON⇄TOON conversion examples
-- **`docs/assumptions.md`** – Documented gaps/assumptions + strict vs. permissive behavior
-- **`DESIGN_PHILOSOPHY.md`** – Architecture decisions and design principles (why zero-dependency core, optional features, etc.)
-
-### v0.3.0 Documentation
-- **`RELEASE_NOTES.md`** – Complete v0.3.0 release notes with upgrade guide
-- **`CHANGELOG.md`** – Traditional changelog with version history
-- **`YAML_SUPPORT_SUMMARY.md`** – Complete YAML support implementation details
-
-### Performance Optimization Documentation
-- **`OPTIMIZATION_README.md`** – Quick start guide to optimization docs
-- **`OPTIMIZATIONS_DOCUMENTED.md`** – 23-page detailed technical analysis
-- **`ALL_OPTIMIZATIONS_SUMMARY.md`** – Comprehensive optimization overview
-- **`SERIALIZER_OPTIMIZATIONS.md`** – Serializer-specific optimizations
-- **`UTILS_OPTIMIZATIONS.md`** – Utils module improvements
-- **`PARALLEL_OPTIMIZATIONS.md`** – Parallel processing enhancements
-- **`OPTIMIZATION_PROJECT_SUMMARY.md`** – Executive summary of optimization project
-
-### Benchmark Scripts
-- **`benchmark_optimizations.py`** – Parser performance benchmarks
-- **`benchmark_serializer.py`** – Serializer performance benchmarks
-- **`benchmark_parallel.py`** – Parallel module benchmarks
-- **`benchmark_summary.py`** – Visual benchmark summary generator
-
-**Note:** Tabular format heuristics are documented in the code (see `toonpy/serializer.py` and `toonpy/utils.py`). The library automatically detects uniform arrays and uses tabular format when it saves tokens.
+---
 
 ## 🌟 Use Cases
 
-* **Data Serialization**: Efficient storage and transmission of structured data
-* **API Development**: Lightweight data format for REST APIs
-* **Configuration Files**: Human-readable config format with comments support
-* **Data Pipelines**: Stream processing of large JSON datasets
-* **ML/AI Projects**: Token-optimized format for LLM training data
-* **Documentation**: Self-documenting data format with inline comments
+- **LLM/AI Projects** — token-optimized tabular format reduces prompt size by 30–50%
+- **Data serialization** — compact, human-readable alternative to JSON/YAML
+- **Configuration files** — comment support, dotted paths, readable structure
+- **Data pipelines** — streaming helpers for large files
+- **REST APIs** — lightweight format with zero-dependency parser
 
-## 📖 Examples
-
-This library includes comprehensive examples covering all use cases from the [official TOON specification examples](https://github.com/toon-format/spec/tree/main/examples). Check out the `examples/` directory:
-
-- `example1` - Basic tabular array with nested objects
-- `example2` - Nested objects with arrays
-- `example3` - Mixed array types
-- `example4` - Multiline strings
-- `example5` - Empty containers and scalars
-- `example6` - Large tabular arrays
-- `example7` - Complex nested structures
-- `example8` - Deep nesting examples
-
-All examples are compatible with the official TOON specification and can be validated against the reference implementation.
-
-Try them with the CLI:
-
-```bash
-toonpy to --in examples/example1.json --out examples/example1.generated.toon
-toonpy from --in examples/example1.toon --out examples/example1.generated.json
-```
+---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
+2. Create a feature branch: `git checkout -b feature/my-feature`
+3. Add tests for your changes
+4. Ensure all tests pass: `pytest`
 5. Open a Pull Request
 
-**Guidelines:**
-- Follow PEP 8 style guidelines
-- Add tests for new features
-- Update documentation as needed
-- Ensure all tests pass: `pytest`
-- Keep additions aligned with TOON SPEC v2.0
+Please keep changes aligned with TOON SPEC v3.0. For spec questions, refer to [docs/assumptions.md](docs/assumptions.md).
+
+---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License — see [LICENSE](LICENSE) for details.
 
 ## 👨‍💻 Author
 
-**Christian Palomares** - [@shinjidev](https://github.com/shinjidev)
-
-## ☕ Support
-
-If you find this project helpful, consider supporting my work:
+**Christian Palomares** — [@shinjidev](https://github.com/shinjidev)
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/shinjidev)
 
-**Buy me a coffee** to help me continue developing open-source tools for the developer community!
+---
 
 ## 🙏 Acknowledgments
 
-* Built following [TOON SPEC v2.0](https://github.com/toon-format/spec)
-* Inspired by the need for efficient, token-optimized data serialization
-* Uses property-based testing with Hypothesis for robust validation
+- Built following [TOON SPEC v3.0](https://github.com/toon-format/spec)
+- Property-based testing with [Hypothesis](https://hypothesis.readthedocs.io/)
+- Inspired by the need for efficient, token-optimized data serialization for LLM applications
 
 ---
 
 ⭐ **Star this repository if you find it useful!** ⭐
-
-## About
-
-A production-grade Python library and CLI that converts data between JSON and TOON (Token-Oriented Object Notation) while fully conforming to TOON SPEC v2.0.

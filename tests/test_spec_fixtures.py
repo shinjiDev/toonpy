@@ -68,7 +68,16 @@ def _options_to_kwargs(options: dict) -> dict[str, Any]:
         "flattenDepth": "flatten_depth",
         "delimiter": "delimiter",
     }
-    return {mapping[k]: v for k, v in options.items() if k in mapping}
+    _delim_char_to_name = {"\t": "tab", "|": "pipe", ",": "comma"}
+    result = {}
+    for k, v in options.items():
+        if k not in mapping:
+            continue
+        kwarg = mapping[k]
+        if kwarg == "delimiter":
+            v = _delim_char_to_name.get(v, v)
+        result[kwarg] = v
+    return result
 
 
 _DECODE_PARAMS = _decode_params()
