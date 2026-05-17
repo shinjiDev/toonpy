@@ -65,7 +65,8 @@ line two
 
 
 def test_error_reports_line():
-    text = "key value"
+    # In v3, "key value" is a valid root primitive; use an actually invalid input
+    text = '"unterminated'
     with pytest.raises(ToonSyntaxError) as exc:
         from_toon(text)
     assert "line" in str(exc.value)

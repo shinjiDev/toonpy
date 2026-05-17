@@ -329,9 +329,9 @@ def test_toon_invalid_syntax_to_yaml():
     """Test TOON to YAML with invalid TOON."""
     from toonpy.errors import ToonSyntaxError
     
-    invalid_toon = """
-name value  # Missing colon
-"""
+    # In v3, bare strings with spaces are valid root primitives;
+    # use an input that is genuinely invalid (unterminated string)
+    invalid_toon = '"unterminated'
     with pytest.raises(ToonSyntaxError):
         to_yaml_from_toon(invalid_toon)
 

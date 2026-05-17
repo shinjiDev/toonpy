@@ -17,7 +17,8 @@ def test_validate_success_and_failure():
     assert ok
     assert errors == []
 
-    bad, errors = validate_toon("key value")
+    # In v3, "key value" is a valid root primitive; use a genuinely invalid input
+    bad, errors = validate_toon('"unterminated')
     assert not bad
     assert errors
 
