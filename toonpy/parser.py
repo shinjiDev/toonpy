@@ -452,10 +452,13 @@ class ToonParser:
                     while child_index < len(self.lines) and self.lines[child_index].content == _BLANK_SENTINEL:
                         child_index += 1
                     if child_index >= len(self.lines) or self.lines[child_index].indent <= indent:
-                        raise ToonSyntaxError("Expected block for inline object entry", line.line_no, 1)
-                    value, next_idx = self._parse_value(child_index)
-                    obj_item[key] = value
-                    index = next_idx
+                        # No following block — empty object (matches _parse_object semantics)
+                        obj_item[key] = {}
+                        index = child_index if child_index < len(self.lines) else len(self.lines)
+                    else:
+                        value, next_idx = self._parse_value(child_index)
+                        obj_item[key] = value
+                        index = next_idx
                 else:
                     obj_item[key] = self._parse_token(inline_value_text, line)
                     index += 1
@@ -485,10 +488,12 @@ class ToonParser:
                         while grandchild < len(self.lines) and self.lines[grandchild].content == _BLANK_SENTINEL:
                             grandchild += 1
                         if grandchild >= len(self.lines) or self.lines[grandchild].indent <= child_indent:
-                            raise ToonSyntaxError("Expected block for sibling key", sib.line_no, 1)
-                        sib_val_parsed, next_idx = self._parse_value(grandchild)
-                        obj_item[sib_key] = sib_val_parsed
-                        index = next_idx
+                            obj_item[sib_key] = {}
+                            index = grandchild if grandchild < len(self.lines) else len(self.lines)
+                        else:
+                            sib_val_parsed, next_idx = self._parse_value(grandchild)
+                            obj_item[sib_key] = sib_val_parsed
+                            index = next_idx
                     else:
                         obj_item[sib_key] = self._parse_token(sib_val_text, sib)
                         index += 1
@@ -556,11 +561,16 @@ class ToonParser:
         while index < len(self.lines):
             sib = self.lines[index]
             if sib.content == _BLANK_SENTINEL:
-                # Blank lines between object fields are allowed
                 index += 1
                 continue
             if sib.indent != child_indent:
                 break
+            sib_header = self._parse_header_syntax(sib.content)
+            if sib_header and sib_header.key:
+                sib_val, next_idx = self._dispatch_header(index, sib_header, child_indent)
+                obj[sib_header.key] = sib_val
+                index = next_idx
+                continue
             sib_key_text, sib_val_text = self._split_key_value(sib.content)
             if sib_key_text is None:
                 break
@@ -569,9 +579,13 @@ class ToonParser:
                 grandchild = index + 1
                 while grandchild < len(self.lines) and self.lines[grandchild].content == _BLANK_SENTINEL:
                     grandchild += 1
-                sib_val_parsed, next_idx2 = self._parse_value(grandchild)
-                obj[sib_key] = sib_val_parsed
-                index = next_idx2
+                if grandchild >= len(self.lines) or self.lines[grandchild].indent <= child_indent:
+                    obj[sib_key] = {}
+                    index = grandchild if grandchild < len(self.lines) else len(self.lines)
+                else:
+                    sib_val_parsed, next_idx2 = self._parse_value(grandchild)
+                    obj[sib_key] = sib_val_parsed
+                    index = next_idx2
             else:
                 obj[sib_key] = self._parse_token(sib_val_text, sib)
                 index += 1
@@ -708,7 +722,9 @@ class ToonParser:
             raise ToonSyntaxError("Unexpected blank line", line.line_no, 1)
         header = self._parse_header_syntax(line.content)
         if header is not None and header.key is not None:
-            return self._dispatch_header(index, header, line.indent)
+            # A keyed header is the first entry of a nested object — parse the
+            # whole sibling group, not just the single array it introduces.
+            return self._parse_object(index, line.indent)
         if self._is_array_line(line.content):
             return self._parse_list_items(index, line.indent, expected=-1, header_line=line)
         key, value = self._split_key_value(line.content)
