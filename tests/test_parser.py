@@ -71,3 +71,33 @@ def test_error_reports_line():
         from_toon(text)
     assert "line" in str(exc.value)
 
+
+def test_expand_paths_basic():
+    from toonpy.parser import from_toon as _from_toon
+    result = _from_toon("a.b.c: 1", expand_paths="safe")
+    assert result == {"a": {"b": {"c": 1}}}
+
+
+def test_expand_paths_off_by_default():
+    from toonpy.parser import from_toon as _from_toon
+    result = _from_toon("a.b.c: 1")
+    assert result == {"a.b.c": 1}
+
+
+def test_expand_paths_conflict_strict():
+    from toonpy.parser import from_toon as _from_toon
+    with pytest.raises(ToonSyntaxError):
+        _from_toon("a.b: 1\na: 2", expand_paths="safe", strict=True)
+
+
+def test_expand_paths_lww():
+    from toonpy.parser import from_toon as _from_toon
+    result = _from_toon("a.b: 1\na: 2", expand_paths="safe", strict=False)
+    assert result == {"a": 2}
+
+
+def test_expand_paths_quoted_keys_preserved():
+    from toonpy.parser import from_toon as _from_toon
+    result = _from_toon('"c.d": 2', expand_paths="safe")
+    assert result == {"c.d": 2}
+

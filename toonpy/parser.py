@@ -209,7 +209,10 @@ class ToonParser:
             key, _ = self._split_key_value(first.content)
             if key is not None:
                 idx = self.lines.index(first)
-                value, next_idx = self._parse_object(idx, first.indent)
+                quoted_keys: set[str] = set()
+                value, next_idx = self._parse_object(
+                    idx, first.indent, _collect_quoted=quoted_keys
+                )
                 while next_idx < len(self.lines) and self.lines[next_idx].content == _BLANK_SENTINEL:
                     next_idx += 1
                 if next_idx != len(self.lines):
@@ -217,7 +220,7 @@ class ToonParser:
                     raise ToonSyntaxError("Unexpected content after document", extra.line_no, 1)
                 if self.expand_paths != "off" and isinstance(value, dict):
                     from ._path_expansion import expand_paths as _ep
-                    value = _ep(value, strict=self.strict)
+                    value = _ep(value, strict=self.strict, quoted_keys=frozenset(quoted_keys))
                 return value
 
         # Root primitive: entire line is the value
@@ -604,7 +607,9 @@ class ToonParser:
             )
         return rows, index
 
-    def _parse_object(self, start: int, indent: int) -> tuple[object, int]:
+    def _parse_object(
+        self, start: int, indent: int, _collect_quoted: set[str] | None = None
+    ) -> tuple[object, int]:
         result: dict[str, object] = {}
         index = start
         while index < len(self.lines):
@@ -630,6 +635,8 @@ class ToonParser:
             if key_text is None:
                 break
             key = self._parse_key(key_text, line)
+            if _collect_quoted is not None and key_text and key_text[0] == '"':
+                _collect_quoted.add(key)
 
             if value_text == "":
                 child_index = index + 1
