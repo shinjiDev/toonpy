@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "toontools"
-version = "0.6.0"
+version = "1.0.0"
 description = "Conversion utilities between JSON, YAML, TOML and TOON (Token-Oriented Object Notation)"
 readme = "README.md"
 authors = [
@@ -16,7 +16,7 @@ requires-python = ">=3.9"
 dependencies = []
 keywords = ["toon", "json", "yaml", "toml", "serialization", "parser", "data-format"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",

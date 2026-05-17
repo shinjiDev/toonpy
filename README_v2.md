@@ -1,5 +1,5 @@
 > **This is the legacy documentation for toonpy v0.5.x / TOON SPEC v2.0.**
-> For current v0.6.0 / TOON SPEC v3.0 documentation, see [README.md](README.md).
+> For current v1.0.0 / TOON SPEC v3.0 documentation, see [README.md](README.md).
 
 ---
 

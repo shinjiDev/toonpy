@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.0] - 2026-05-17
+## [1.0.0] - 2026-05-17
+
+First stable release. Promotes the full TOON spec v3.0 implementation to
+production/stable status. No breaking changes from 0.6.x — 1.0.0 is a
+drop-in replacement.
 
 ### Added
 - **TOON spec v3.0 full support** — v3 is now the default parser
@@ -24,11 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `format_key` now follows v3 key rules (no hyphens in unquoted keys)
 - `tabular_schema` detection uses key-set comparison (order-independent)
 - Parser performance improved +117% on simple objects, +123% on tabular arrays vs v2 baseline
+- Development status promoted to **Production/Stable**
 
 ### Fixed
 - Strings containing `:`, `\t`, or `\r` are now correctly quoted in serializer output
 - Hyphenated keys (`my-key`) now always quoted in serializer output
 - Delimiter characters and spaces properly escaped in cell and value contexts
+- 5 round-trip failures for structures with empty containers inside list-item objects (found by Hypothesis)
 
 ## [0.3.0] - 2025-11-25
 

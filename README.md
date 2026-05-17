@@ -12,7 +12,7 @@
 
 A production-grade Python library and CLI that converts data between JSON, YAML, TOML, and TOON (Token-Oriented Object Notation) while fully conforming to **TOON SPEC v3.0**. Perfect for developers and data engineers who need efficient, token-optimized data serialization.
 
-**📦 Current Version: 0.6.0** — Full TOON spec v3.0 support with multiple delimiters, key folding, path expansion, and significant performance gains. See [What's New in v0.6.0](#-whats-new-in-v060).
+**📦 Current Version: 1.0.0** — Full TOON spec v3.0 support with multiple delimiters, key folding, path expansion, and significant performance gains. See [What's New in v1.0.0](#-whats-new-in-v100).
 
 **✅ Full TOON SPEC v3.0 Compliance** — 358/358 official spec fixtures pass. TOON v2 documents are supported via the `spec="v2"` option.
 
@@ -22,7 +22,7 @@ A production-grade Python library and CLI that converts data between JSON, YAML,
 
 ---
 
-## 🚀 What's New in v0.6.0
+## 🚀 What's New in v1.0.0
 
 **TOON SPEC v3.0 Release** (May 2026) — Full implementation of TOON spec v3.0 with major new features and the largest performance jump yet.
 
@@ -55,7 +55,7 @@ A production-grade Python library and CLI that converts data between JSON, YAML,
 
 ### Performance Gains vs v2 Baseline
 
-| Operation | v0.6.0 | v2 Baseline | Gain |
+| Operation | v1.0.0 | v2 Baseline | Gain |
 |-----------|--------|-------------|------|
 | Parser — simple object (4 KVs) | 135,924 docs/sec | ~62,500 | **+117%** |
 | Parser — tabular array 3×3 | 93,085 docs/sec | ~41,667 | **+123%** |
@@ -405,7 +405,7 @@ The v2 parser (`toonpy._parser_v2`) is a verbatim copy of the pre-v3 parser and 
 
 ### API changes
 
-| Old (≤0.5.x) | New (0.6.0+) | Notes |
+| Old (≤0.5.x) | New (1.0.0+) | Notes |
 |---|---|---|
 | `from_toon(src, mode="strict")` | `from_toon(src, strict=True)` | `mode` kwarg removed; use `strict`/`permissive` |
 | `from_toon(src, mode="permissive")` | `from_toon(src, permissive=True)` | |
@@ -446,9 +446,9 @@ toonpy toon-to-toml --in data.toon --out data.toml
 
 ## ⚡ Performance
 
-v0.6.0 is the fastest release yet, with parser throughput more than doubled vs the v2 baseline:
+v1.0.0 is the fastest release yet, with parser throughput more than doubled vs the v2 baseline:
 
-| Operation | v0.6.0 | v2 Baseline | Improvement |
+| Operation | v1.0.0 | v2 Baseline | Improvement |
 |-----------|--------|-------------|-------------|
 | Parser — simple object (4 KVs) | **135,924 docs/sec** | ~62,500 | +117% |
 | Parser — tabular array 3×3 | **93,085 docs/sec** | ~41,667 | +123% |
@@ -458,7 +458,7 @@ v0.6.0 is the fastest release yet, with parser throughput more than doubled vs t
 | Serializer — complex nested | **56,608 docs/sec** | 32,678 | +73% |
 | Serializer — many booleans | **101,461 docs/sec** | 68,481 | +48% |
 
-Key optimizations in v0.6.0:
+Key optimizations in v1.0.0:
 
 - **Parser**: `_parse_header_syntax` (regex) skipped via `"[" not in line` fast path — eliminates the regex for ~99% of KV lines
 - **Parser**: `_split_key_value` uses `str.find(":")` fast path for unquoted keys instead of full character walking
@@ -471,7 +471,7 @@ Run the benchmarks:
 
 ```bash
 python benchmark_before.py     # v2 baseline numbers
-python benchmark_after.py      # v0.6.0 numbers
+python benchmark_after.py      # v1.0.0 numbers
 ```
 
 ---
