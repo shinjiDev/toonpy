@@ -282,6 +282,8 @@ with open("config.toml") as fin, open("out.toon", "w") as fout:
 
 ### Multiple Delimiters
 
+Tab and pipe are available as alternatives to the default comma; choose based on your data and output context.
+
 ```
 # comma (default)
 users[3]{id,name,role}:
@@ -305,6 +307,8 @@ users[3\t]{id\tname\trole}:
 ---
 
 ### Primitive Inline Arrays
+
+Compact single-line form for scalar-only arrays; the serializer emits this automatically.
 
 ```
 tags[3]: python,serialization,toon
