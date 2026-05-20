@@ -282,8 +282,6 @@ with open("config.toml") as fin, open("out.toon", "w") as fout:
 
 ### Multiple Delimiters
 
-v3 supports comma (default), tab, and pipe as row separators in tabular arrays:
-
 ```
 # comma (default)
 users[3]{id,name,role}:
@@ -304,26 +302,18 @@ users[3\t]{id\tname\trole}:
   3\tKing\tTitan
 ```
 
-Choose via `to_toon(data, delimiter="pipe")` or `from_toon(toon, delimiter="tab")`.
-
 ---
 
 ### Primitive Inline Arrays
-
-Scalar-only arrays can be written on a single line:
 
 ```
 tags[3]: python,serialization,toon
 scores[5]: 98,87,92,76,100
 ```
 
-The serializer emits this format automatically when all elements are scalars.
-
 ---
 
 ### Key Folding (Serializer)
-
-Collapse single-key chains into dotted paths:
 
 ```python
 data = {"config": {"server": {"host": "localhost"}}}
@@ -342,8 +332,6 @@ to_toon(data, key_folding="safe", flatten_depth=1)
 ---
 
 ### Path Expansion (Parser)
-
-Expand dotted keys into nested objects:
 
 ```python
 toon = "config.server.host: localhost"
