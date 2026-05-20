@@ -53,17 +53,9 @@ A production-grade Python library and CLI that converts data between JSON, YAML,
 | `expand_paths` | `"off"` (default), `"safe"`, `"lax"` | Expand dotted keys into nested objects |
 | `spec` | `"v3"` (default), `"v2"` | Route to v2 parser for legacy documents |
 
-### Performance Gains vs v2 Baseline
+### Performance Gains vs v0.5.x baseline
 
-| Operation | v1.0.0 | v2 Baseline | Gain |
-|-----------|--------|-------------|------|
-| Parser — simple object (4 KVs) | 135,924 docs/sec | ~62,500 | **+117%** |
-| Parser — tabular array 3×3 | 93,085 docs/sec | ~41,667 | **+123%** |
-| Serializer — simple object | 134,248 docs/sec | 97,325 | **+38%** |
-| Serializer — with array | 132,248 docs/sec | 72,308 | **+83%** |
-| Serializer — with table | 80,033 docs/sec | 46,450 | **+72%** |
-| Serializer — complex nested | 56,608 docs/sec | 32,678 | **+73%** |
-| Serializer — many booleans | 101,461 docs/sec | 68,481 | **+48%** |
+Parser throughput more than doubled vs the previous release; serializer gains range from +38% to +83%. See [Performance](#-performance).
 
 **Previous Releases:** [v0.5.0](README_v2.md#-whats-new-in-v050) (TOML support) · [v0.4.0](README_v2.md) (YAML support) · [CHANGELOG.md](CHANGELOG.md) for full history.
 
@@ -446,9 +438,9 @@ toonpy toon-to-toml --in data.toon --out data.toml
 
 ## ⚡ Performance
 
-v1.0.0 is the fastest release yet, with parser throughput more than doubled vs the v2 baseline:
+v1.0.0 is the fastest release yet, with parser throughput more than doubled vs the v0.5.x baseline:
 
-| Operation | v1.0.0 | v2 Baseline | Improvement |
+| Operation | v1.0.0 | v0.5.x baseline | Improvement |
 |-----------|--------|-------------|-------------|
 | Parser — simple object (4 KVs) | **135,924 docs/sec** | ~62,500 | +117% |
 | Parser — tabular array 3×3 | **93,085 docs/sec** | ~41,667 | +123% |
