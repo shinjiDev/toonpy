@@ -494,63 +494,6 @@ pytest tests/test_parser.py tests/test_serializer.py -v
 
 ---
 
-## 📊 TOON Format Overview
-
-TOON (Token-Oriented Object Notation) is an indentation-based format optimized for token efficiency in LLM applications.
-
-**Key/value object:**
-```
-name: Luz
-age: 16
-active: true
-```
-
-**Array (list format):**
-```
-crew[3]:
-  - Luz
-  - Amity
-  - Willow
-```
-
-**Tabular array (most compact for uniform objects):**
-```
-crew[3]{id,name,role}:
-  1,Luz,Human
-  2,Eda,Witch
-  3,King,Titan
-```
-
-**Primitive inline array:**
-```
-tags[3]: python,serialization,toon
-```
-
-**Nested object:**
-```
-ship:
-  name: "Owl House"
-  location: Bonesborough
-```
-
-**Multiline string:**
-```
-bio: """
-  Luz is a human teen from the real world
-  who stumbled upon the Boiling Isles.
-"""
-```
-
-**Comments:**
-```
-# line comment
-// also a line comment
-/* block comment */
-```
-
-For the full grammar, see [docs/spec_summary.md](docs/spec_summary.md) and the [official TOON spec](https://github.com/toon-format/spec/blob/main/SPEC.md).
-
----
 
 ## 📚 Documentation
 
@@ -563,15 +506,6 @@ For the full grammar, see [docs/spec_summary.md](docs/spec_summary.md) and the [
 
 ---
 
-## 🌟 Use Cases
-
-- **LLM/AI Projects** — token-optimized tabular format reduces prompt size by 30–50%
-- **Data serialization** — compact, human-readable alternative to JSON/YAML
-- **Configuration files** — comment support, dotted paths, readable structure
-- **Data pipelines** — streaming helpers for large files
-- **REST APIs** — lightweight format with zero-dependency parser
-
----
 
 ## 🤝 Contributing
 
@@ -597,12 +531,6 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-## 🙏 Acknowledgments
-
-- Built following [TOON SPEC v3.0](https://github.com/toon-format/spec)
-- Property-based testing with [Hypothesis](https://hypothesis.readthedocs.io/)
-- Inspired by the need for efficient, token-optimized data serialization for LLM applications
-
----
+*Built on [TOON SPEC v3.0](https://github.com/toon-format/spec) · Property-based testing with [Hypothesis](https://hypothesis.readthedocs.io/).*
 
 ⭐ **Star this repository if you find it useful!** ⭐
